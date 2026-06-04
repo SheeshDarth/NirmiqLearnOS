@@ -1,0 +1,42 @@
+# NirmiqLearn OS — Cursor Rules
+
+## Project Identity
+Local-first AI learning OS. Next.js 16 · TypeScript · Tailwind CSS 4 · SQLite + Drizzle · Zod · Zustand.
+Tagline: "Build with AI, but learn like a real engineer."
+
+## Before Coding
+- Read docs/CONTEXT.md first.
+- Read docs/GRAPHIFY_MAP.md to find relevant files. Do not scan the whole repo.
+- Read the specific doc for the task (TRD for technical, UI_UX for UI, DEBUGGING for bugs).
+
+## Code Style
+- TypeScript strict mode always.
+- Small focused components. No files over ~200 lines.
+- Zod for all validation at boundaries.
+- Service functions return `{ ok: true; data: T } | { ok: false; error: string }`.
+- No premature abstractions. Three similar lines > a helper no one asked for.
+- No comments unless explaining a non-obvious WHY.
+
+## Architecture Rules
+- Persistent data → SQLite via Drizzle. Never in Zustand.
+- Zustand only for: selectedWorkspaceId, sidebarCollapsed, theme, UI filters.
+- App Router server components for data fetching. Server Actions for mutations.
+- API routes only if server actions are insufficient.
+
+## UI Rules
+- Dark academic theme. Background: near-black (#0a0c10). Accent: cyan-400/500.
+- Every page must show: "What should the user do next?"
+- Empty states must guide action, never just say "Nothing here."
+- Badges for: workspace type (project/dsa/exam/topic), confidence (red/yellow/green).
+- shadcn/ui components only. No raw HTML inputs.
+
+## After Every Change
+Run: `npm run lint` → `npm run typecheck` → `npm run build`
+Commit with conventional type: feat / fix / docs / style / refactor / chore / db
+
+## Never
+- Commit .env, *.db, node_modules, secrets.
+- Push unless user asks.
+- Use generic AI chatbot UI patterns.
+- Store learning data in Zustand.
+- Build beyond the current phase scope.

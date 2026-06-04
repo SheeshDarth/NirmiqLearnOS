@@ -1,0 +1,36 @@
+# NirmiqLearn OS — Windsurf Rules
+
+## Project
+Local-first AI learning OS built with Next.js 16 + TypeScript + Tailwind CSS 4.
+Students build with AI but must genuinely understand their projects.
+
+## Session Start
+1. Read docs/CONTEXT.md.
+2. Read docs/GRAPHIFY_MAP.md to locate relevant files without scanning the repo.
+3. Read only the task-specific doc: TRD (technical), UI_UX (UI), DEBUGGING (bugs), PRD (product).
+
+## Coding Rules
+- TypeScript strict mode. No `any`.
+- Small components. Max ~200 lines per file.
+- Zod validation at all system boundaries.
+- Service result type: `{ ok: true; data: T } | { ok: false; error: string; code?: string }`.
+- Drizzle ORM for all DB access. No raw SQL unless necessary.
+- Zustand for UI state only — never for persistent data.
+
+## UI Constraints
+- Theme: dark, academic, premium. Near-black background, cyan accent.
+- Component library: shadcn/ui.
+- Layout: left sidebar + topbar + main content + optional right panel.
+- Every page must answer: "What do I do next?"
+
+## Build Phases (current: Phase 1 — App Shell)
+See docs/GRAPHIFY_MAP.md for full phase graph and file dependency map.
+
+## Git Rules
+- Conventional commits: feat / fix / docs / chore / db / refactor / style
+- Run lint + typecheck + build before every commit.
+- Never commit secrets, .env, or *.db files.
+- Never push without explicit user instruction.
+
+## Architecture Decisions
+Log in docs/COUNCIL_REVIEW_LOG.md. Trigger LLM Council review for schema, security, and overengineering checks.
