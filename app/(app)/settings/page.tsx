@@ -28,10 +28,10 @@ export default function SettingsPage() {
         <div className="p-4 flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-zinc-100">Export Format</p>
-            <p className="text-xs text-zinc-500 mt-0.5">Markdown — available in Phase 8</p>
+            <p className="text-xs text-zinc-500 mt-0.5">Markdown — use the Export button on any workspace</p>
           </div>
-          <span className="text-xs text-zinc-600 bg-zinc-800 px-2 py-0.5 rounded">
-            coming soon
+          <span className="text-xs text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded">
+            available
           </span>
         </div>
 

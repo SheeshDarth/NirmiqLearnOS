@@ -179,6 +179,23 @@ export default async function WorkspaceDetailPage({
           <span className="text-xs text-amber-400 font-medium">Open →</span>
         </Link>
 
+        {/* Daily Log — live */}
+        <Link
+          href={`/workspaces/${ws.id}/daily-log`}
+          className="group bg-[#0d1117] border border-zinc-800 hover:border-zinc-700 rounded-lg p-5 transition-colors block"
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <BookOpen size={15} className="text-emerald-400" />
+            <h2 className="text-sm font-semibold text-zinc-100 group-hover:text-white">
+              Daily Log
+            </h2>
+          </div>
+          <p className="text-xs text-zinc-500 mb-3">
+            What did you build? What is still unclear? What is next?
+          </p>
+          <span className="text-xs text-emerald-400 font-medium">Open →</span>
+        </Link>
+
         {/* DSA Bridge — live */}
         <Link
           href={`/workspaces/${ws.id}/dsa-bridge`}
