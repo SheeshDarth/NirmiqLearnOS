@@ -12,8 +12,12 @@ out/
 
 # database/private local data
 data/*.db
+data/*.db-shm
+data/*.db-wal
 data/*.sqlite
 *.db
+*.db-shm
+*.db-wal
 *.sqlite
 
 # logs
