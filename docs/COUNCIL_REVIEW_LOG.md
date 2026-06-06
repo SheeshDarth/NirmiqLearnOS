@@ -111,26 +111,40 @@ Rationale:
 
 ---
 
-### REVIEW-002 — (Template for next review)
+### REVIEW-002 — Plug-and-play IDE Integration + Security Model
 
-**Date:** YYYY-MM-DD
-**Phase:** [phase number and name]
-**Decision:** [what you are deciding]
+**Date:** 2026-06-06
+**Phase:** Post-MVP Extension Architecture
+**Decision:** How to make NirmiqLearn OS plug-and-play for any IDE, and the right security/privacy model for a local-first tool that reads project files.
 
 **Question Asked:**
-[paste your council prompt question]
+Should we build a VS Code extension, CLI tool, MCP server, or all three? What is the right security and privacy model for a local-first tool that reads project files?
 
 **Council Synthesis:**
 
-**Recommendation:**
+**Recommendation:** MCP server (highest leverage — works in Claude Code, Cursor, Windsurf natively) + CLI launcher (covers JetBrains, Neovim, any shell). Do NOT build a VS Code extension in MVP.
 
 **Risks:**
+- `better-sqlite3` requires native compilation — may fail on machines without build tools. Documented in README; `tsx` used to run the MCP server without a separate build step.
+- MCP port collision — mitigated by using stdio transport (no network socket opened).
+- Content-Disposition header injection — FIXED: `safeFilename()` now strips all non-alphanumeric characters before setting the header.
+- `0.0.0.0` binding — FIXED: `--hostname 127.0.0.1` added to both `dev` and `start` scripts.
+- Privacy via MCP — documented in Privacy Policy page and Settings.
 
 **Simplest Path:**
+1. Fix Content-Disposition injection and localhost binding (security fixes first).
+2. Add security headers to `next.config.ts` (CSP, X-Frame-Options, Permissions-Policy).
+3. Build MCP server (`mcp-server/index.ts`) with 7 tools backed by the existing service layer.
+4. Build CLI (`bin/nirmiq.mjs`) — `start`, `mcp`, `open` commands; auto-adds `data/` to `.gitignore`.
+5. Add Privacy Policy page + MCP setup guide in Settings.
 
 **What NOT to Build Yet:**
+- VS Code extension (VSIX release pipeline overhead; Cursor/Windsurf already use MCP)
+- JetBrains plugin (CLI covers this)
+- Cloud sync / auth (anti-product identity)
+- Encrypted SQLite (overkill for MVP; document the limitation instead)
 
-**Status:** ⬜ Pending / ✅ Accepted / ❌ Rejected
+**Status:** ✅ Accepted — implemented in security + extension commit
 
 ---
 
@@ -139,5 +153,5 @@ Rationale:
 | ID | Decision | Outcome | Phase |
 |----|----------|---------|-------|
 | REVIEW-001 | Stack: Next.js + SQLite + Drizzle | ✅ Accepted | 0 |
-| REVIEW-002 | *(next decision)* | ⬜ Pending | — |
+| REVIEW-002 | MCP server + CLI; no VS Code extension; security hardening | ✅ Accepted | Post-MVP |
 

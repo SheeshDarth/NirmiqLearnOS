@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "nirmiqlearn": {
+      "command": "npm",
+      "args": ["run", "mcp"],
+      "cwd": ".",
+      "description": "NirmiqLearn OS — AI-native learning tools for any project"
+    }
+  }
+}
