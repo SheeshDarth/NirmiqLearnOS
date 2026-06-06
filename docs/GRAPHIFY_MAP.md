@@ -29,8 +29,8 @@ graph LR
     P0["✅ Phase 0\nRepo + Docs Setup"]
     P1["✅ Phase 1\nApp Shell"]
     P2["✅ Phase 2\nDatabase"]
-    P3["🔄 Phase 3\nWorkspaces"]
-    P4["⬜ Phase 4\nLearning Maps"]
+    P3["✅ Phase 3\nWorkspaces"]
+    P4["🔄 Phase 4\nLearning Maps"]
     P5["⬜ Phase 5\nExplain-Back"]
     P6["⬜ Phase 6\nDebug Lab"]
     P7["⬜ Phase 7\nDSA Bridge"]
@@ -258,7 +258,14 @@ erDiagram
 | `lib/types.ts` | 2 | ✅ Done |
 | `drizzle.config.ts` | 2 | ✅ Done |
 | `instrumentation.ts` | 2 | ✅ Done |
-| `lib/services/workspace.service.ts` | 3 | ⬜ Todo |
+| `lib/validators/workspace.schema.ts` | 3 | ✅ Done |
+| `lib/services/workspace.service.ts` | 3 | ✅ Done |
+| `app/(app)/workspaces/page.tsx` | 3 | ✅ Done |
+| `app/(app)/workspaces/new/page.tsx` | 3 | ✅ Done |
+| `app/(app)/workspaces/[id]/page.tsx` | 3 | ✅ Done |
+| `app/(app)/workspaces/actions.ts` | 3 | ✅ Done |
+| `components/workspace/WorkspaceCard.tsx` | 3 | ✅ Done |
+| `components/workspace/CreateWorkspaceForm.tsx` | 3 | ✅ Done |
 | `lib/services/learning-map.service.ts` | 4 | ⬜ Todo |
 | `lib/services/explain-back.service.ts` | 5 | ⬜ Todo |
 | `lib/services/debug-log.service.ts` | 6 | ⬜ Todo |
