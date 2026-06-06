@@ -34,7 +34,7 @@ graph LR
     P5["✅ Phase 5\nExplain-Back"]
     P6["✅ Phase 6\nDebug Lab"]
     P7["✅ Phase 7\nDSA Bridge"]
-    P8["⬜ Phase 8\nExport"]
+    P8["✅ Phase 8\nExport"]
     P9["⬜ Phase 9\nPolish"]
 
     P0 --> P1 --> P2 --> P3
@@ -294,6 +294,7 @@ erDiagram
 | `app/(app)/workspaces/[id]/dsa-bridge/page.tsx` | 7 | ✅ Done |
 | `components/dsa-bridge/AddConceptLinkForm.tsx` | 7 | ✅ Done |
 | `components/dsa-bridge/ConceptLinkCard.tsx` | 7 | ✅ Done |
-| `lib/services/export.service.ts` | 8 | ⬜ Todo |
+| `lib/services/export.service.ts` | 8 | ✅ Done |
+| `app/(app)/workspaces/[id]/export/route.ts` | 8 | ✅ Done |
 
 > Update this table after completing each file.
