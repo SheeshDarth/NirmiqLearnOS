@@ -87,14 +87,15 @@ export default async function WorkspaceDetailPage({
             </div>
           </div>
 
-          <button
-            disabled
-            title="Export — available in Phase 8"
-            className="flex items-center gap-1.5 text-xs text-zinc-600 px-3 py-2 rounded-md border border-zinc-800 cursor-not-allowed shrink-0"
+          <a
+            href={`/workspaces/${ws.id}/export`}
+            download
+            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-100 px-3 py-2 rounded-md border border-zinc-800 hover:border-zinc-600 transition-colors shrink-0"
+            title="Download workspace as Markdown"
           >
             <Download size={13} />
             Export
-          </button>
+          </a>
         </div>
 
         {ws.goal && (
