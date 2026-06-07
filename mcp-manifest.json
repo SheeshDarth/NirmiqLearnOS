@@ -1,0 +1,101 @@
+{
+  "name": "nirmiqlearn",
+  "display_name": "NirmiqLearn OS",
+  "description": "A local-first learning OS that connects to your IDE. Log debug sessions, generate explain-back questions, map DSA concepts, and track daily learning — all inside Claude Code, Cursor, or Windsurf. Your data never leaves your machine.",
+  "version": "0.1.0",
+  "author": "Siddharth Prasad",
+  "license": "MIT",
+  "homepage": "https://github.com/SheeshDarth/NirmiqLearnOS",
+  "repository": "https://github.com/SheeshDarth/NirmiqLearnOS",
+  "categories": ["education", "developer-tools", "productivity", "learning"],
+  "tags": [
+    "learning",
+    "education",
+    "debug",
+    "dsa",
+    "algorithms",
+    "explain-back",
+    "local-first",
+    "sqlite",
+    "student",
+    "engineer",
+    "ai-assisted"
+  ],
+  "transport": "stdio",
+  "command": {
+    "type": "npm",
+    "script": "mcp",
+    "cwd": "<path-to-NirmiqLearnOS>"
+  },
+  "install": {
+    "steps": [
+      "git clone https://github.com/SheeshDarth/NirmiqLearnOS.git",
+      "cd NirmiqLearnOS && npm install",
+      "npm run db:generate && npm run db:migrate",
+      "npm run mcp"
+    ]
+  },
+  "tools": [
+    {
+      "name": "list_workspaces",
+      "description": "List all learning workspaces",
+      "tier": "free"
+    },
+    {
+      "name": "get_workspace_summary",
+      "description": "Get full summary of a workspace including questions, concepts, debug logs, and daily logs",
+      "tier": "free"
+    },
+    {
+      "name": "add_debug_log",
+      "description": "Log a debug session with error, root cause, and fix",
+      "tier": "free"
+    },
+    {
+      "name": "add_question",
+      "description": "Add an explain-back question to a workspace",
+      "tier": "free"
+    },
+    {
+      "name": "add_concept_link",
+      "description": "Link a DSA or CS concept to a workspace",
+      "tier": "free"
+    },
+    {
+      "name": "add_daily_log",
+      "description": "Log what you built, understood, and what is still unclear today",
+      "tier": "free"
+    },
+    {
+      "name": "get_weak_questions",
+      "description": "Surface explain-back questions you have been avoiding or not answered",
+      "tier": "free"
+    },
+    {
+      "name": "nirmiq_generate_questions",
+      "description": "AI: Generate 5 progressive explain-back questions from a code snippet (beginner to advanced). Requires ANTHROPIC_API_KEY.",
+      "tier": "pro"
+    },
+    {
+      "name": "nirmiq_suggest_concepts",
+      "description": "AI: Identify 3-5 underlying DSA/CS concepts in a code snippet with 30-min practice tasks. Requires ANTHROPIC_API_KEY.",
+      "tier": "pro"
+    },
+    {
+      "name": "nirmiq_debug_assist",
+      "description": "AI: Analyse an error message and return root cause, top 3 checks, fix, and prevention rule. Requires ANTHROPIC_API_KEY.",
+      "tier": "pro"
+    }
+  ],
+  "privacy": {
+    "data_collection": "none",
+    "telemetry": false,
+    "network_calls": "only-when-pro-key-set",
+    "data_storage": "local-sqlite-only",
+    "server_binding": "127.0.0.1"
+  },
+  "requirements": {
+    "node": ">=18",
+    "npm": ">=9"
+  }
+}
