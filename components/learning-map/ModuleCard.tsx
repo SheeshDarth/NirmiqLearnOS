@@ -60,7 +60,7 @@ export default function ModuleCard({
 
       {/* Summary */}
       {module.summary && (
-        <p className="text-xs text-zinc-500 leading-relaxed">{module.summary}</p>
+        <p className="text-xs text-zinc-500 leading-relaxed whitespace-pre-line">{module.summary}</p>
       )}
 
       {/* Concept chips */}

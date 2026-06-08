@@ -5,6 +5,7 @@ import { ArrowLeft, Code2 } from "lucide-react";
 import Link from "next/link";
 import { getWorkspaceById } from "@/lib/services/workspace.service";
 import { getConceptLinksByWorkspaceId } from "@/lib/services/concept-link.service";
+import { getLearningMapByWorkspaceId } from "@/lib/services/learning-map.service";
 import { AddConceptLinkForm } from "@/components/dsa-bridge/AddConceptLinkForm";
 import { ConceptLinkCard } from "@/components/dsa-bridge/ConceptLinkCard";
 import {
@@ -18,15 +19,19 @@ export default async function DSABridgePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [wsResult, linksResult] = await Promise.all([
+  const [wsResult, linksResult, mapResult] = await Promise.all([
     getWorkspaceById(id),
     getConceptLinksByWorkspaceId(id),
+    getLearningMapByWorkspaceId(id),
   ]);
 
   if (!wsResult.ok) notFound();
 
   const ws = wsResult.data;
   const links = linksResult.ok ? linksResult.data : [];
+  const howItWorksModule = mapResult.ok && mapResult.data
+    ? mapResult.data.modules.find((m) => m.title.toLowerCase().includes("how it works"))
+    : null;
 
   // Group by concept type
   const grouped = links.reduce<Record<string, typeof links>>((acc, link) => {
@@ -60,6 +65,23 @@ export default async function DSABridgePage({
           Map every feature you build to the fundamental concept behind it. Own the theory, not just the code.
         </p>
       </div>
+
+      {/* Architecture context from project analysis */}
+      {howItWorksModule && (
+        <details className="group bg-[#0d1117] border border-violet-900/30 rounded-lg overflow-hidden">
+          <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none hover:bg-zinc-900/50 transition-colors list-none">
+            <Code2 size={13} className="text-violet-400 shrink-0" />
+            <span className="text-xs font-medium text-violet-300">Architecture Context — how this project works</span>
+            <span className="ml-auto text-xs text-zinc-600 group-open:hidden">show</span>
+            <span className="ml-auto text-xs text-zinc-600 hidden group-open:block">hide</span>
+          </summary>
+          <div className="px-4 pb-4 border-t border-violet-900/30">
+            <p className="mt-3 text-xs text-zinc-400 whitespace-pre-line leading-relaxed">
+              {howItWorksModule.summary}
+            </p>
+          </div>
+        </details>
+      )}
 
       {/* Stats row */}
       {links.length > 0 && (

@@ -5,6 +5,7 @@ import { ArrowLeft, Bug, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { getWorkspaceById } from "@/lib/services/workspace.service";
 import { getDebugLogsByWorkspaceId } from "@/lib/services/debug-log.service";
+import { getLearningMapByWorkspaceId } from "@/lib/services/learning-map.service";
 import { CreateDebugLogForm } from "@/components/debug-lab/CreateDebugLogForm";
 import { DebugLogCard } from "@/components/debug-lab/DebugLogCard";
 import { createDebugLogAction, updateDebugLogAction, deleteDebugLogAction } from "./actions";
@@ -15,15 +16,19 @@ export default async function DebugLabPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [wsResult, logsResult] = await Promise.all([
+  const [wsResult, logsResult, mapResult] = await Promise.all([
     getWorkspaceById(id),
     getDebugLogsByWorkspaceId(id),
+    getLearningMapByWorkspaceId(id),
   ]);
 
   if (!wsResult.ok) notFound();
 
   const ws = wsResult.data;
   const logs = logsResult.ok ? logsResult.data : [];
+  const riskModule = mapResult.ok && mapResult.data
+    ? mapResult.data.modules.find((m) => m.title.toLowerCase().includes("risk") || m.title.toLowerCase().includes("could break"))
+    : null;
 
   const resolved = logs.filter(
     (l) => l.actualCause && l.fixSummary && l.lessonLearned
@@ -54,6 +59,23 @@ export default async function DebugLabPage({
           Every bug is a permanent lesson. Log it, resolve it, extract the rule.
         </p>
       </div>
+
+      {/* Risk map from project analysis */}
+      {riskModule && (
+        <details className="group bg-amber-950/20 border border-amber-900/30 rounded-lg overflow-hidden">
+          <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none hover:bg-amber-950/30 transition-colors list-none">
+            <Bug size={13} className="text-amber-400 shrink-0" />
+            <span className="text-xs font-medium text-amber-300">Known Risk Map — from project analysis</span>
+            <span className="ml-auto text-xs text-zinc-600 group-open:hidden">show</span>
+            <span className="ml-auto text-xs text-zinc-600 hidden group-open:block">hide</span>
+          </summary>
+          <div className="px-4 pb-4 border-t border-amber-900/30">
+            <p className="mt-3 text-xs text-zinc-400 whitespace-pre-line leading-relaxed">
+              {riskModule.summary}
+            </p>
+          </div>
+        </details>
+      )}
 
       {/* Stats row */}
       {logs.length > 0 && (

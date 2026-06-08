@@ -36,6 +36,7 @@ export const learningMaps = sqliteTable("learning_maps", {
   modulesJson: text("modules_json").notNull().default("[]"),
   conceptsJson: text("concepts_json").notNull().default("[]"),
   checkpointsJson: text("checkpoints_json").notNull().default("[]"),
+  analysisRaw: text("analysis_raw"),
   createdAt: integer("created_at")
     .notNull()
     .$defaultFn(() => Date.now()),

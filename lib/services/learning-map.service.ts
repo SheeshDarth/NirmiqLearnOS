@@ -96,6 +96,62 @@ export async function createLearningMap(
   }
 }
 
+// Used by project-analyzer.service to auto-populate a map from analysis
+export async function createLearningMapWithContent(
+  workspaceId: string,
+  content: {
+    title: string;
+    summary?: string;
+    analysisRaw?: string;
+    modules: Array<{
+      title: string;
+      summary: string;
+      difficulty: "beginner" | "intermediate" | "advanced";
+      concepts?: string[];
+      files?: string[];
+    }>;
+    checkpoints: string[];
+  }
+): Promise<ServiceResult<LearningMap>> {
+  try {
+    const modulesJson = JSON.stringify(
+      content.modules.map((m) => ({
+        id: crypto.randomUUID(),
+        title: m.title,
+        summary: m.summary,
+        difficulty: m.difficulty,
+        concepts: m.concepts ?? [],
+        files: m.files ?? [],
+        confidence: null,
+      } satisfies LearningModule))
+    );
+
+    const checkpointsJson = JSON.stringify(
+      content.checkpoints.map((q) => ({
+        id: crypto.randomUUID(),
+        question: q,
+        completed: false,
+      } satisfies Checkpoint))
+    );
+
+    const [raw] = await db
+      .insert(learningMaps)
+      .values({
+        workspaceId,
+        title: content.title,
+        summary: content.summary ?? null,
+        analysisRaw: content.analysisRaw ?? null,
+        modulesJson,
+        checkpointsJson,
+      })
+      .returning();
+
+    return { ok: true, data: toPresentation(raw) };
+  } catch {
+    return { ok: false, error: "Failed to create learning map", code: "DB_ERROR" };
+  }
+}
+
 export async function getLearningMapByWorkspaceId(
   workspaceId: string
 ): Promise<ServiceResult<LearningMap | null>> {

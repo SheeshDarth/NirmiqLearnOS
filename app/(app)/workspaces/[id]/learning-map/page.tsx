@@ -1,7 +1,7 @@
 import { getLearningMapByWorkspaceId } from "@/lib/services/learning-map.service";
 import { getWorkspaceById } from "@/lib/services/workspace.service";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CheckSquare, Square } from "lucide-react";
+import { ArrowLeft, CheckSquare, Square, Sparkles, FileText } from "lucide-react";
 import Link from "next/link";
 import CreateMapForm from "@/components/learning-map/CreateMapForm";
 import AddModuleForm from "@/components/learning-map/AddModuleForm";
@@ -51,7 +51,7 @@ export default async function LearningMapPage({
       <div>
         <h1 className="text-lg font-semibold text-zinc-100">Learning Map</h1>
         <p className="text-sm text-zinc-500 mt-0.5">
-          Break your project into modules, concepts, and understanding checkpoints.
+          Project workflow, technical areas, and understanding checkpoints.
         </p>
       </div>
 
@@ -63,16 +63,27 @@ export default async function LearningMapPage({
           </h2>
           <p className="text-xs text-zinc-500 mb-4">
             Start by giving this map a name. Then add modules one by one.
+            Tip: Import a project to get an auto-generated map instantly.
           </p>
           <CreateMapForm workspaceId={workspaceId} action={createMapAction} />
         </div>
       ) : (
         <>
+          {/* Auto-generated notice */}
+          {map.analysisRaw && (
+            <div className="flex items-center gap-2 bg-violet-500/5 border border-violet-900/30 rounded-lg px-4 py-2.5">
+              <Sparkles size={13} className="text-violet-400 shrink-0" />
+              <span className="text-xs text-violet-300">
+                Auto-generated from project analysis — modules show your project&apos;s technical structure and risk areas.
+              </span>
+            </div>
+          )}
+
           {/* Map header */}
           <div className="bg-[#0d1117] border border-zinc-800 rounded-lg p-4">
             <h2 className="text-base font-semibold text-zinc-100">{map.title}</h2>
             {map.summary && (
-              <p className="text-sm text-zinc-500 mt-1">{map.summary}</p>
+              <p className="text-sm text-zinc-400 mt-2 leading-relaxed">{map.summary}</p>
             )}
             {totalCheckpoints > 0 && (
               <div className="mt-3 flex items-center gap-2">
@@ -178,6 +189,23 @@ export default async function LearningMapPage({
               action={addCheckpointAction}
             />
           </div>
+
+          {/* Full analysis reference */}
+          {map.analysisRaw && (
+            <details className="group bg-[#0d1117] border border-zinc-800 rounded-lg overflow-hidden">
+              <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none hover:bg-zinc-900/50 transition-colors list-none">
+                <FileText size={13} className="text-zinc-500 shrink-0" />
+                <span className="text-xs font-medium text-zinc-400">Full Project Analysis</span>
+                <span className="ml-auto text-xs text-zinc-600 group-open:hidden">show</span>
+                <span className="ml-auto text-xs text-zinc-600 hidden group-open:block">hide</span>
+              </summary>
+              <div className="px-4 pb-4 border-t border-zinc-800">
+                <pre className="mt-3 text-xs text-zinc-400 whitespace-pre-wrap leading-relaxed font-mono overflow-x-auto">
+                  {map.analysisRaw}
+                </pre>
+              </div>
+            </details>
+          )}
         </>
       )}
     </div>

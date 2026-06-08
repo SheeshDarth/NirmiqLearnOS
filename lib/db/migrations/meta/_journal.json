@@ -15,6 +15,13 @@
       "when": 1780819897243,
       "tag": "0001_mature_jazinda",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1749380000000,
+      "tag": "0002_add_analysis_raw",
+      "breakpoints": true
     }
   ]
 }

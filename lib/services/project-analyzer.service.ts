@@ -16,6 +16,7 @@ import path from "path";
 import { createWorkspace } from "@/lib/services/workspace.service";
 import { createQuestion } from "@/lib/services/explain-back.service";
 import { createConceptLink } from "@/lib/services/concept-link.service";
+import { createLearningMapWithContent } from "@/lib/services/learning-map.service";
 import { detectStack, generateLocalAnalysisText } from "@/lib/services/local-analyzer.service";
 import type { ServiceResult } from "@/lib/types";
 
@@ -161,6 +162,57 @@ export function cloneOrPullRepo(githubUrl: string, destPath: string): void {
       stdio: "pipe",
     });
   }
+}
+
+// ── Analysis section parsing ───────────────────────────────────────────────────
+
+function extractSection(text: string, header: string): string {
+  const escaped = header.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`\\*\\*${escaped}[^*]*\\*\\*`);
+  const m = text.match(re);
+  if (!m || m.index === undefined) return "";
+  const after = text.slice(m.index + m[0].length);
+  const nextIdx = after.search(/\n\n\*\*[A-Z]/);
+  return (nextIdx === -1 ? after : after.slice(0, nextIdx)).trim();
+}
+
+function parseUnderstandAreas(text: string): string[] {
+  const section = extractSection(text, "WHAT YOU NEED TO UNDERSTAND");
+  const results: string[] = [];
+  for (const line of section.split("\n")) {
+    const m = line.match(/^\d+\.\s+(.+)$/);
+    if (m) results.push(m[1].trim());
+  }
+  return results.slice(0, 5);
+}
+
+function buildLearningMapContent(analysisText: string, projectName: string) {
+  const whatItDoes = extractSection(analysisText, "WHAT THIS PROJECT DOES");
+  const techStack  = extractSection(analysisText, "TECH STACK");
+  const howItWorks = extractSection(analysisText, "HOW IT WORKS");
+  const keyFiles   = extractSection(analysisText, "KEY FILES AND WHAT THEY DO");
+  const riskMap    = extractSection(analysisText, "WHAT COULD BREAK AND WHY");
+
+  const modules: Array<{
+    title: string;
+    summary: string;
+    difficulty: "beginner" | "intermediate" | "advanced";
+  }> = [];
+
+  if (techStack)  modules.push({ title: "Tech Stack & Dependencies", summary: techStack,  difficulty: "beginner" });
+  if (howItWorks) modules.push({ title: "How It Works",              summary: howItWorks, difficulty: "intermediate" });
+  if (keyFiles)   modules.push({ title: "Key Files",                 summary: keyFiles,   difficulty: "beginner" });
+  if (riskMap)    modules.push({ title: "Risk Map — What Could Break", summary: riskMap,  difficulty: "advanced" });
+
+  const checkpoints = parseUnderstandAreas(analysisText);
+
+  return {
+    title: `${projectName} — Project Analysis`,
+    summary: whatItDoes || undefined,
+    analysisRaw: analysisText,
+    modules,
+    checkpoints,
+  };
 }
 
 // ── Main analysis ──────────────────────────────────────────────────────────────
@@ -316,6 +368,10 @@ export async function analyzeProject(
     });
     if (r.ok) conceptsCreated++;
   }
+
+  // Auto-create Learning Map from analysis
+  const mapContent = buildLearningMapContent(analysisText, projectName);
+  await createLearningMapWithContent(workspaceId, mapContent);
 
   return {
     ok: true,
