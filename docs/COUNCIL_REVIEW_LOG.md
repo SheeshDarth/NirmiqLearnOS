@@ -148,10 +148,55 @@ Should we build a VS Code extension, CLI tool, MCP server, or all three? What is
 
 ---
 
+---
+
+### REVIEW-003 — NirmiqVoice: Jarvis-like Voice Assistant Architecture
+
+**Date:** 2026-06-09
+**Phase:** New standalone project under Nirmiq umbrella
+**Decision:** Architecture for a full OS-level voice assistant (Windows 11 + Android APK)
+
+**Question Asked:**
+Build a Jarvis-like voice assistant for personal use on Windows 11 laptop + Samsung S23. Needs: open apps (WhatsApp, select contacts), type messages, play local songs, access files, low CPU, high accuracy. NirmiqLearnOS is a Next.js web app — browser sandbox blocks OS automation. Options: A) FastAPI Python sidecar, B) Electron wrapper, C) pure Node.js local server, D) split web voice + Python OS automation script.
+
+**Council Synthesis:**
+
+**Recommendation:** Option D — lightweight Python WebSocket sidecar (no framework) + browser Web Speech API. NOT FastAPI, NOT Electron.
+- Bare Python script runs a WebSocket server on `ws://localhost:8765`
+- Voice capture via browser Web Speech API (offloads to Google — zero local CPU)
+- Python sidecar handles all OS automation: `pyautogui`, `subprocess`, `python-vlc`, `pathlib`
+- In-app navigation handled client-side in Next.js (not applicable — standalone project)
+- Android: Expo React Native + `@react-native-voice/voice` + Android Intents for app launching
+
+**Risks:**
+- Web Speech API requires Chromium browser — mitigated by including fallback notice
+- pyautogui window fragility — mitigated by using pygetwindow to find/focus windows before interaction
+- WebSocket port conflict — mitigated by scanning ports 8765–8775 on startup
+- python-vlc memory — mitigated by using streaming playback mode
+- Android deep system access — mitigated by using Android Intents + wa.me links (no Accessibility Services needed for MVP)
+
+**Simplest Path:**
+1. `jarvis/sidecar/` — Python WebSocket server + handler modules (apps, media, files, typer, system)
+2. `jarvis/ui/` — Browser HTML/JS UI using Web Speech API + WebSocket client
+3. `jarvis/start.bat` — single launcher
+4. `android/` — Expo React Native app with voice orb UI + Intent-based command execution
+
+**What NOT to Build Yet:**
+- Wake word detection (pvporcupine/pocketsphinx) — heavy background memory; push-to-talk is sufficient
+- Custom TTS synthesis — use browser SpeechSynthesis API (instant, zero overhead)
+- Electron rewrite — 300MB overhead for same result Python sidecar achieves at 15-25MB
+- LangChain/agent frameworks — regex-first + one Claude Haiku call handles 95% of commands
+- WhatsApp Web via Puppeteer — use WhatsApp Desktop + pyautogui instead
+
+**Status:** ✅ Accepted — implemented as `C:\Nirmiq\NirmiqVoice`
+
+---
+
 ## Architecture Decisions Summary
 
 | ID | Decision | Outcome | Phase |
 |----|----------|---------|-------|
 | REVIEW-001 | Stack: Next.js + SQLite + Drizzle | ✅ Accepted | 0 |
 | REVIEW-002 | MCP server + CLI; no VS Code extension; security hardening | ✅ Accepted | Post-MVP |
+| REVIEW-003 | NirmiqVoice: Python WS sidecar + browser STT; Expo for Android | ✅ Accepted | Standalone |
 
