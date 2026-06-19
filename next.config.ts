@@ -31,6 +31,12 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // better-sqlite3 is a native addon — it must be require()'d at runtime, not
+  // bundled. Without this, Turbopack tries to bundle it into its render/
+  // static-path worker processes, which crashes them (WorkerError) on the
+  // dynamic /workspaces/[id] routes.
+  serverExternalPackages: ["better-sqlite3"],
+
   // Apply security headers to every route
   async headers() {
     return [
