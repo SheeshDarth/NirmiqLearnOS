@@ -22,6 +22,13 @@
       "when": 1780820000000,
       "tag": "0002_add_analysis_raw",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1781965816673,
+      "tag": "0003_massive_mastermind",
+      "breakpoints": true
     }
   ]
 }

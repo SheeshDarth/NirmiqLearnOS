@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Trash2, ChevronDown, ChevronUp, ArrowRight, BookOpen } from "lucide-react";
+import { Trash2, ChevronDown, ChevronUp, ArrowRight, BookOpen, Code } from "lucide-react";
 import type { ConceptLink } from "@/lib/services/concept-link.service";
 
 type Props = {
@@ -91,6 +91,21 @@ export function ConceptLinkCard({ link, deleteAction }: Props) {
       {/* Expanded detail */}
       {expanded && (
         <div className="border-t border-zinc-800 px-4 py-4 space-y-4">
+          {link.codeSnippet && (
+            <div>
+              <p className="text-xs text-zinc-500 uppercase tracking-wide font-medium mb-1 flex items-center gap-1.5">
+                <Code size={12} className="text-cyan-400" />
+                Found in your code
+                {link.sourceFile && (
+                  <span className="text-zinc-600 normal-case font-mono">— {link.sourceFile}</span>
+                )}
+              </p>
+              <pre className="text-xs text-cyan-200/90 bg-black/40 border border-zinc-800 rounded px-3 py-2 overflow-x-auto font-mono whitespace-pre-wrap">
+                {link.codeSnippet}
+              </pre>
+            </div>
+          )}
+
           {link.explanation && (
             <div>
               <p className="text-xs text-zinc-500 uppercase tracking-wide font-medium mb-1">

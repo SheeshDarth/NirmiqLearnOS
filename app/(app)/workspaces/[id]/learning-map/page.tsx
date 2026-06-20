@@ -1,7 +1,7 @@
 import { getLearningMapByWorkspaceId } from "@/lib/services/learning-map.service";
 import { getWorkspaceById } from "@/lib/services/workspace.service";
 import { getConceptLinksByWorkspaceId } from "@/lib/services/concept-link.service";
-import { buildKnowledgeGraph } from "@/lib/services/knowledge-graph.service";
+import { buildKnowledgeGraph, type KnowledgeGraphData } from "@/lib/services/knowledge-graph.service";
 import { notFound } from "next/navigation";
 import { ArrowLeft, CheckSquare, Square, Sparkles, FileText } from "lucide-react";
 import Link from "next/link";
@@ -41,7 +41,18 @@ export default async function LearningMapPage({
   const completedCheckpoints = map?.checkpoints.filter((c) => c.completed).length ?? 0;
   const totalCheckpoints = map?.checkpoints.length ?? 0;
 
-  const graph = buildKnowledgeGraph(workspace.title, map, conceptLinks);
+  // Prefer the real architecture/workflow graph built from source code at
+  // import time; fall back to the module-derived graph for older workspaces.
+  let graph: KnowledgeGraphData;
+  if (map?.graphJson) {
+    try {
+      graph = JSON.parse(map.graphJson) as KnowledgeGraphData;
+    } catch {
+      graph = buildKnowledgeGraph(workspace.title, map, conceptLinks);
+    }
+  } else {
+    graph = buildKnowledgeGraph(workspace.title, map, conceptLinks);
+  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">

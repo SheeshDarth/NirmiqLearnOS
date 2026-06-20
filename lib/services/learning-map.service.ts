@@ -103,6 +103,7 @@ export async function createLearningMapWithContent(
     title: string;
     summary?: string;
     analysisRaw?: string;
+    graphJson?: string;
     modules: Array<{
       title: string;
       summary: string;
@@ -141,6 +142,7 @@ export async function createLearningMapWithContent(
         title: content.title,
         summary: content.summary ?? null,
         analysisRaw: content.analysisRaw ?? null,
+        graphJson: content.graphJson ?? null,
         modulesJson,
         checkpointsJson,
       })

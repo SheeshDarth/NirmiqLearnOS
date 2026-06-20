@@ -9,7 +9,9 @@
 
 import type { LearningMap } from "@/lib/services/learning-map.service";
 
-export type GraphNodeType = "project" | "module" | "concept" | "file";
+export type GraphNodeType = "project" | "layer" | "module" | "concept" | "file";
+
+export type GraphLinkKind = "contains" | "imports" | "flow";
 
 export interface GraphNode {
   id: string;
@@ -17,11 +19,13 @@ export interface GraphNode {
   type: GraphNodeType;
   val: number; // relative size
   summary?: string; // shown when the node is clicked
+  color?: string; // explicit color (e.g. by architecture layer)
 }
 
 export interface GraphLink {
   source: string;
   target: string;
+  kind?: GraphLinkKind; // contains (structure) | imports (dependency) | flow (workflow)
 }
 
 export interface KnowledgeGraphData {

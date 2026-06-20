@@ -15,9 +15,13 @@ import { execSync } from "child_process";
 import path from "path";
 import { createWorkspace } from "@/lib/services/workspace.service";
 import { createQuestion } from "@/lib/services/explain-back.service";
-import { createConceptLink } from "@/lib/services/concept-link.service";
+import {
+  createConceptLink,
+  createConceptLinkWithSource,
+} from "@/lib/services/concept-link.service";
 import { createLearningMapWithContent } from "@/lib/services/learning-map.service";
 import { detectStack, generateLocalAnalysisText } from "@/lib/services/local-analyzer.service";
+import { analyzeCode } from "@/lib/services/code-analyzer.service";
 import type { ServiceResult } from "@/lib/types";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -385,9 +389,35 @@ export async function analyzeProject(
     if (r.ok) conceptsCreated++;
   }
 
-  // Auto-create Learning Map from analysis
+  // Read the real source code: extract code-grounded DSA findings + build the
+  // architecture/workflow graph. Best-effort — never fail the import over this.
+  let graphJson: string | undefined;
+  try {
+    const code = analyzeCode(resolvedPath, projectName);
+
+    for (const f of code.findings) {
+      const r = await createConceptLinkWithSource(workspaceId, {
+        projectFeature: f.file,
+        conceptName: f.name,
+        conceptType: f.category,
+        explanation: `${f.explanation}\n\nCS fundamental: ${f.dsaConnection}`,
+        practiceTask: f.practiceTask,
+        sourceFile: `${f.file}:${f.line}`,
+        codeSnippet: f.snippet,
+      });
+      if (r.ok) conceptsCreated++;
+    }
+
+    if (code.graph.nodes.length > 1) {
+      graphJson = JSON.stringify(code.graph);
+    }
+  } catch {
+    /* code analysis is best-effort */
+  }
+
+  // Auto-create Learning Map from analysis (+ the real architecture graph)
   const mapContent = buildLearningMapContent(analysisText, projectName);
-  await createLearningMapWithContent(workspaceId, mapContent);
+  await createLearningMapWithContent(workspaceId, { ...mapContent, graphJson });
 
   return {
     ok: true,

@@ -37,6 +37,8 @@ export const learningMaps = sqliteTable("learning_maps", {
   conceptsJson: text("concepts_json").notNull().default("[]"),
   checkpointsJson: text("checkpoints_json").notNull().default("[]"),
   analysisRaw: text("analysis_raw"),
+  // Architecture/workflow graph derived from real code (nodes + edges JSON)
+  graphJson: text("graph_json"),
   createdAt: integer("created_at")
     .notNull()
     .$defaultFn(() => Date.now()),
@@ -156,6 +158,9 @@ export const conceptLinks = sqliteTable("concept_links", {
   conceptType: text("concept_type"),
   explanation: text("explanation"),
   practiceTask: text("practice_task"),
+  // Code-grounded DSA: where the structure/algorithm was found
+  sourceFile: text("source_file"),
+  codeSnippet: text("code_snippet"),
   createdAt: integer("created_at")
     .notNull()
     .$defaultFn(() => Date.now()),

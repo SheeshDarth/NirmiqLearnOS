@@ -32,6 +32,39 @@ export async function createConceptLink(
   }
 }
 
+// Used by the code analyzer to store code-grounded DSA findings (with snippet).
+export async function createConceptLinkWithSource(
+  workspaceId: string,
+  input: {
+    projectFeature: string;
+    conceptName: string;
+    conceptType?: string;
+    explanation?: string;
+    practiceTask?: string;
+    sourceFile?: string;
+    codeSnippet?: string;
+  }
+): Promise<ServiceResult<ConceptLink>> {
+  try {
+    const [link] = await db
+      .insert(conceptLinks)
+      .values({
+        workspaceId,
+        projectFeature: input.projectFeature,
+        conceptName: input.conceptName,
+        conceptType: input.conceptType ?? null,
+        explanation: input.explanation ?? null,
+        practiceTask: input.practiceTask ?? null,
+        sourceFile: input.sourceFile ?? null,
+        codeSnippet: input.codeSnippet ?? null,
+      })
+      .returning();
+    return { ok: true, data: link };
+  } catch {
+    return { ok: false, error: "Failed to create concept link", code: "DB_ERROR" };
+  }
+}
+
 export async function getConceptLinksByWorkspaceId(
   workspaceId: string
 ): Promise<ServiceResult<ConceptLink[]>> {
