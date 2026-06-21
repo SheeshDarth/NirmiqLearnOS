@@ -34,13 +34,10 @@ export default function ImportProjectPage() {
     ? inputValue.startsWith("https://github.com/") || inputValue.startsWith("github.com/")
     : null;
 
-  // Redirect on success
+  // Redirect immediately on success — the action already returns the workspaceId.
   useEffect(() => {
     if (state.status === "success") {
-      const timer = setTimeout(() => {
-        router.push(`/workspaces/${state.workspaceId}`);
-      }, 2000);
-      return () => clearTimeout(timer);
+      router.push(`/workspaces/${state.workspaceId}`);
     }
   }, [state, router]);
 

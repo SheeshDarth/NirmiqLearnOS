@@ -10,7 +10,10 @@
  * Security:
  * - Pro license is verified against Gumroad API; raw key is never stored.
  * - Anthropic client is instantiated per-call; key never stored globally.
- * - All prompts are constructed server-side only — no user-controlled injection.
+ * - User-controlled values (code_snippet, error_message, command) ARE interpolated
+ *   into prompts. This is BYOK (the user's own key), so it is not a classic injection
+ *   hole, but analyzed code can attempt prompt injection — never let model output drive
+ *   privileged actions, and treat extracted fields as untrusted.
  */
 
 import Anthropic from "@anthropic-ai/sdk";

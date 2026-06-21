@@ -72,6 +72,11 @@
       "tier": "free"
     },
     {
+      "name": "nirmiq_explain_command",
+      "description": "Explain a shell command in plain English and log it to the session log (what it does, why it ran, what it changes, risk level). Works without a key (basic static explanation); set ANTHROPIC_API_KEY + NIRMIQ_PRO_KEY for AI-powered explanations.",
+      "tier": "free"
+    },
+    {
       "name": "nirmiq_generate_questions",
       "description": "AI: Generate 5 progressive explain-back questions from a code snippet (beginner to advanced). Requires ANTHROPIC_API_KEY.",
       "tier": "pro"
@@ -84,6 +89,11 @@
     {
       "name": "nirmiq_debug_assist",
       "description": "AI: Analyse an error message and return root cause, top 3 checks, fix, and prevention rule. Requires ANTHROPIC_API_KEY.",
+      "tier": "pro"
+    },
+    {
+      "name": "nirmiq_analyze_project",
+      "description": "AI: Point NirmiqLearn at a project folder and get a full understanding breakdown — plain-English overview, simplified stack, architecture, key files, learning map, 10 explain-back questions, and 5 CS concepts. Creates and populates a workspace automatically. Requires NIRMIQ_PRO_KEY + ANTHROPIC_API_KEY.",
       "tier": "pro"
     }
   ],
