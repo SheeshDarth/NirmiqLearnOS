@@ -49,6 +49,11 @@ export function ConceptLinkCard({ link, deleteAction }: Props) {
             <span className="text-sm font-semibold text-zinc-100">
               {link.conceptName}
             </span>
+            {link.astConfidence === "ast" && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-900/40 font-medium tracking-wide shrink-0">
+                AST
+              </span>
+            )}
             {link.conceptType && (
               <span
                 className={`text-xs px-2 py-0.5 rounded font-medium ${typeStyle.bg} ${typeStyle.text}`}
