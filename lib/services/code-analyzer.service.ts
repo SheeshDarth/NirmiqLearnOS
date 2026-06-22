@@ -543,11 +543,170 @@ function scanFindingsAst(
   addHit(detectStackQueue(ast, lines), stackSig);
   addHit(detectHeap(ast, lines), HEAP_SIGNAL);
   addHit(detectLinkedList(ast, lines), LINKEDLIST_SIGNAL);
+  addHit(detectObserver(ast, lines), OBSERVER_SIGNAL);
+  addHit(detectSingleton(ast, lines), SINGLETON_SIGNAL);
+  addHit(detectFactory(ast, lines), FACTORY_SIGNAL);
+  addHit(detectBacktracking(ast, lines), BACKTRACKING_SIGNAL);
 
   // Regex for signals that work fine on TS/JS (false-positive rate is low)
   out.push(...scanFindings(rel, content, true));
 
   return out;
+}
+
+// ── Phase 2 AST signal detectors ─────────────────────────────────────────────
+
+const OBSERVER_SIGNAL = {
+  name: "Observer / Event Emitter",
+  category: "Pattern",
+  explanation: "One object notifies many subscribers when state changes — decouples producers from consumers.",
+  dsaConnection: "Observer pattern — a callback list maintained by the subject; O(n) notification per event.",
+  practiceTask: "Implement a minimal EventEmitter with on(), off(), and emit() from scratch (~30 lines).",
+};
+
+const SINGLETON_SIGNAL = {
+  name: "Singleton Pattern",
+  category: "Pattern",
+  explanation: "Guarantees only one instance of a class exists and provides a global access point.",
+  dsaConnection: "Singleton — a static field storing the single instance; lazy vs eager initialization trade-off.",
+  practiceTask: "Rewrite this singleton as a module-level const and explain why that is often simpler in JS/TS.",
+};
+
+const FACTORY_SIGNAL = {
+  name: "Factory Function / Method",
+  category: "Pattern",
+  explanation: "Creates and returns objects without exposing construction details to callers.",
+  dsaConnection: "Factory pattern — encapsulates construction; compare to constructor injection for testability.",
+  practiceTask: "Write a unit test that swaps this factory for a stub and verify caller behaviour is unchanged.",
+};
+
+const BACKTRACKING_SIGNAL = {
+  name: "Backtracking",
+  category: "Algorithm",
+  explanation: "Explores all possibilities by building candidates incrementally and abandoning those that fail.",
+  dsaConnection: "Backtracking — recursive DFS with pruning; exponential worst-case O(k^n) but pruning matters.",
+  practiceTask: "Solve LeetCode #46 (Permutations) using backtracking; trace the call tree on [1,2,3].",
+};
+
+// .on()/.addEventListener() AND .emit()/.dispatchEvent() in the same file
+function detectObserver(ast: TSESTree.Program, lines: string[]): AstHit | null {
+  let hasSubscribe = false;
+  let hasPublish = false;
+  let firstHit: AstHit | null = null;
+
+  walkAst(ast, (node) => {
+    if (node.type !== "CallExpression" || node.callee.type !== "MemberExpression") return;
+    const me = node.callee as TSESTree.MemberExpression;
+    if (me.computed || me.property.type !== "Identifier") return;
+    const method = (me.property as TSESTree.Identifier).name;
+    if (method === "on" || method === "addEventListener" || method === "addListener") {
+      hasSubscribe = true;
+      if (!firstHit) firstHit = nodeHit(node, lines);
+    }
+    if (method === "emit" || method === "dispatchEvent" || method === "trigger") hasPublish = true;
+  });
+
+  return hasSubscribe && hasPublish ? firstHit : null;
+}
+
+// ClassDeclaration with static instance field + static getInstance method
+function detectSingleton(ast: TSESTree.Program, lines: string[]): AstHit | null {
+  let found: AstHit | null = null;
+
+  walkAst(ast, (node) => {
+    if (found || node.type !== "ClassDeclaration") return;
+    const cls = node as TSESTree.ClassDeclaration;
+    let hasStaticInstance = false;
+    let hasGetInstance = false;
+    for (const member of cls.body.body) {
+      if (
+        (member.type === "PropertyDefinition" || member.type === "MethodDefinition") &&
+        member.static
+      ) {
+        const key =
+          member.key.type === "Identifier" ? (member.key as TSESTree.Identifier).name : "";
+        if (/^_?instance$/i.test(key)) hasStaticInstance = true;
+        if (member.type === "MethodDefinition" && /getInstance|instance/i.test(key))
+          hasGetInstance = true;
+      }
+    }
+    if (hasStaticInstance && hasGetInstance) found = nodeHit(node, lines);
+  });
+
+  return found;
+}
+
+// Function/method whose name starts with create/build/make and has a return type annotation
+function detectFactory(ast: TSESTree.Program, lines: string[]): AstHit | null {
+  const FACTORY_RE = /^(create|build|make|produce)/i;
+  let found: AstHit | null = null;
+
+  walkAst(ast, (node) => {
+    if (found) return;
+    if (node.type === "FunctionDeclaration") {
+      const fn = node as TSESTree.FunctionDeclaration;
+      if (fn.id?.name && FACTORY_RE.test(fn.id.name) && fn.returnType) {
+        found = nodeHit(node, lines);
+      }
+    }
+    if (node.type === "MethodDefinition") {
+      const m = node as TSESTree.MethodDefinition;
+      if (
+        m.key.type === "Identifier" &&
+        FACTORY_RE.test((m.key as TSESTree.Identifier).name) &&
+        (m.value as TSESTree.FunctionExpression).returnType
+      ) {
+        found = nodeHit(node, lines);
+      }
+    }
+  });
+
+  return found;
+}
+
+// Recursive function that also contains a for-loop (classic backtracking shape)
+function detectBacktracking(ast: TSESTree.Program, lines: string[]): AstHit | null {
+  let found: AstHit | null = null;
+
+  function checkBody(funcName: string, body: unknown): void {
+    if (found || !body) return;
+    let hasLoop = false;
+    let hasSelfCall = false;
+    walkAst(body, (node) => {
+      if (
+        node.type === "ForStatement" ||
+        node.type === "ForOfStatement" ||
+        node.type === "ForInStatement"
+      ) hasLoop = true;
+      if (
+        node.type === "CallExpression" &&
+        node.callee.type === "Identifier" &&
+        (node.callee as TSESTree.Identifier).name === funcName
+      ) hasSelfCall = true;
+    });
+    if (hasLoop && hasSelfCall) {
+      const n = body as unknown as TSESTree.Node;
+      const ln = n.loc?.start.line ?? 1;
+      found = { line: ln, snippet: (lines[ln - 1] ?? "").trim().slice(0, 200) };
+    }
+  }
+
+  walkAst(ast, (node, ancestors) => {
+    if (found) return;
+    if (node.type === "FunctionDeclaration") {
+      const fn = node as TSESTree.FunctionDeclaration;
+      if (fn.id?.name) checkBody(fn.id.name, fn.body);
+    }
+    if (node.type === "FunctionExpression" || node.type === "ArrowFunctionExpression") {
+      const parent = ancestors[ancestors.length - 1];
+      if (parent?.type === "VariableDeclarator" && parent.id.type === "Identifier") {
+        const fn = node as TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression;
+        checkBody((parent.id as TSESTree.Identifier).name, fn.body);
+      }
+    }
+  });
+
+  return found;
 }
 
 // ── Topological sort (Kahn's algorithm) ──────────────────────────────────────
@@ -610,6 +769,45 @@ function topoSort(
   return { order, cycleFiles, cycles };
 }
 
+// ── PageRank (power iteration, 20 steps, damping 0.85) ───────────────────────
+function computePageRank(
+  files: string[],
+  importEdges: Array<[string, string]>,
+  iterations = 20,
+  damping = 0.85
+): Map<string, number> {
+  const N = files.length;
+  if (N === 0) return new Map();
+
+  // "imported by" adjacency + out-degree for each importer
+  const inLinks = new Map<string, string[]>(files.map((f) => [f, []]));
+  const outDegree = new Map<string, number>(files.map((f) => [f, 0]));
+
+  const seen = new Set<string>();
+  for (const [from, to] of importEdges) {
+    if (!inLinks.has(from) || !inLinks.has(to) || from === to) continue;
+    const key = `${from}→${to}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    inLinks.get(to)!.push(from);
+    outDegree.set(from, (outDegree.get(from) ?? 0) + 1);
+  }
+
+  let scores = new Map<string, number>(files.map((f) => [f, 1 / N]));
+  for (let i = 0; i < iterations; i++) {
+    const next = new Map<string, number>();
+    for (const f of files) {
+      let rank = (1 - damping) / N;
+      for (const src of inLinks.get(f)!) {
+        rank += damping * (scores.get(src) ?? 0) / Math.max(1, outDegree.get(src) ?? 1);
+      }
+      next.set(f, rank);
+    }
+    scores = next;
+  }
+  return scores;
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 export function analyzeCode(projectPath: string, projectTitle: string): CodeAnalysis {
   const root = path.resolve(projectPath);
@@ -621,7 +819,6 @@ export function analyzeCode(projectPath: string, projectTitle: string): CodeAnal
   const allFindings: CodeFinding[] = [];
   const seenSignalFile = new Set<string>(); // one finding per (signal, file) pair
   const layerByFile = new Map<string, string>();
-  const degree = new Map<string, number>();
   let astFileCount = 0;
 
   for (const rel of files) {
@@ -638,8 +835,6 @@ export function analyzeCode(projectPath: string, projectTitle: string): CodeAnal
       const resolved = resolveImport(spec, rel, fileSet);
       if (resolved && resolved !== rel) {
         importEdges.push([rel, resolved]);
-        degree.set(rel, (degree.get(rel) ?? 0) + 1);
-        degree.set(resolved, (degree.get(resolved) ?? 0) + 1);
       }
     }
 
@@ -664,6 +859,11 @@ export function analyzeCode(projectPath: string, projectTitle: string): CodeAnal
 
   // Topological sort + cycle detection on the full import graph
   const { order, cycleFiles, cycles } = topoSort(files, importEdges);
+
+  // PageRank — replaces raw degree for node sizing; "files imported by many" rank highest
+  const pageRank = computePageRank(files, importEdges);
+  const maxPR = Math.max(1e-10, ...pageRank.values());
+  const normPR = (f: string) => (pageRank.get(f) ?? 0) / maxPR;
 
   // ── Build architecture/workflow graph ──────────────────────────────────────
   const nodes: GraphNode[] = [];
@@ -697,7 +897,7 @@ export function analyzeCode(projectPath: string, projectTitle: string): CodeAnal
   }
 
   const topFiles = [...files]
-    .sort((a, b) => (degree.get(b) ?? 0) - (degree.get(a) ?? 0))
+    .sort((a, b) => normPR(b) - normPR(a))
     .slice(0, MAX_GRAPH_FILE_NODES);
   const shown = new Set(topFiles);
 
@@ -706,7 +906,7 @@ export function analyzeCode(projectPath: string, projectTitle: string): CodeAnal
     const short = rel.split("/").slice(-2).join("/");
     addNode({
       id: `file:${rel}`, label: short, type: "file",
-      val: 4 + Math.min(6, degree.get(rel) ?? 0),
+      val: 4 + Math.round(normPR(rel) * 6),
       color: LAYER_COLOR[layer],
       summary: `${rel}\nLayer: ${layer}`,
     });

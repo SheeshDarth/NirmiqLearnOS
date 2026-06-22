@@ -17,6 +17,8 @@ import {
   toggleCheckpointAction,
 } from "./actions";
 
+const READING_ORDER_MAX = 12;
+
 export const dynamic = "force-dynamic";
 
 export default async function LearningMapPage({
@@ -122,6 +124,50 @@ export default async function LearningMapPage({
 
           {/* Interactive knowledge graph */}
           <KnowledgeGraphLoader data={graph} />
+
+          {/* Suggested reading order (from topological sort — only for code-analyzed projects) */}
+          {graph.readingOrder && graph.readingOrder.length > 0 && (
+            <details className="group bg-[#0d1117] border border-zinc-800 rounded-lg overflow-hidden">
+              <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none hover:bg-zinc-900/50 transition-colors list-none">
+                <FileText size={13} className="text-cyan-500 shrink-0" />
+                <span className="text-xs font-medium text-zinc-400">
+                  Suggested Reading Order
+                  <span className="ml-2 text-zinc-600 font-normal">
+                    — start here when exploring this codebase
+                  </span>
+                </span>
+                <span className="ml-auto text-xs text-zinc-600 group-open:hidden">show</span>
+                <span className="ml-auto text-xs text-zinc-600 hidden group-open:block">hide</span>
+              </summary>
+              <div className="px-4 pb-4 border-t border-zinc-800">
+                {graph.cycles && graph.cycles.length > 0 && (
+                  <div className="mt-3 flex items-start gap-2 bg-amber-500/5 border border-amber-900/30 rounded px-3 py-2 text-xs text-amber-400/80">
+                    <span className="shrink-0 mt-0.5">⚠</span>
+                    <span>
+                      {graph.cycles.length} circular import{graph.cycles.length > 1 ? "s" : ""} detected
+                      — those files are excluded from the order below.
+                    </span>
+                  </div>
+                )}
+                <ol className="mt-3 space-y-1.5">
+                  {graph.readingOrder.slice(0, READING_ORDER_MAX).map((file, i) => (
+                    <li key={file} className="flex items-start gap-2.5 text-xs">
+                      <span className="text-zinc-700 font-mono w-5 shrink-0 text-right">{i + 1}.</span>
+                      <span className="text-zinc-400 font-mono">{file}</span>
+                    </li>
+                  ))}
+                  {graph.readingOrder.length > READING_ORDER_MAX && (
+                    <li className="flex items-start gap-2.5 text-xs">
+                      <span className="text-zinc-700 font-mono w-5 shrink-0 text-right">…</span>
+                      <span className="text-zinc-600">
+                        and {graph.readingOrder.length - READING_ORDER_MAX} more files
+                      </span>
+                    </li>
+                  )}
+                </ol>
+              </div>
+            </details>
+          )}
 
           {/* Modules */}
           <div className="space-y-3">
