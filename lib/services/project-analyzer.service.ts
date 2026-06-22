@@ -431,6 +431,12 @@ export async function analyzeProject(
     if (code.graph.nodes.length > 1) {
       graphJson = JSON.stringify(code.graph);
     }
+
+    // BM25 search index — best-effort, never fail the import
+    try {
+      const { buildSearchIndex } = await import("@/lib/services/search.service");
+      await buildSearchIndex(workspaceId, code.chunks);
+    } catch { /* search is optional */ }
   } catch {
     /* code analysis is best-effort */
   }

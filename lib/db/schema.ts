@@ -149,6 +149,22 @@ export const sessionLogs = sqliteTable("session_logs", {
     .$defaultFn(() => Date.now()),
 });
 
+export const searchChunks = sqliteTable("search_chunks", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  workspaceId: text("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  filePath: text("file_path").notNull(),
+  chunkType: text("chunk_type").notNull().default("file"),
+  chunkText: text("chunk_text").notNull(),
+  layer: text("layer"),
+  createdAt: integer("created_at")
+    .notNull()
+    .$defaultFn(() => Date.now()),
+});
+
 export const conceptLinks = sqliteTable("concept_links", {
   id: text("id")
     .primaryKey()

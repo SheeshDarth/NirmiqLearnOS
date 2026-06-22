@@ -53,8 +53,16 @@ export interface CodeFinding {
   confidence: "ast" | "regex";
 }
 
+export interface CodeChunk {
+  filePath: string;
+  chunkType: "file";
+  chunkText: string;
+  layer: string;
+}
+
 export interface CodeAnalysis {
   findings: CodeFinding[];
+  chunks: CodeChunk[];
   graph: KnowledgeGraphData;
   fileCount: number;
 }
@@ -817,6 +825,7 @@ export function analyzeCode(projectPath: string, projectTitle: string): CodeAnal
 
   const importEdges: Array<[string, string]> = [];
   const allFindings: CodeFinding[] = [];
+  const allChunks: CodeChunk[] = [];
   const seenSignalFile = new Set<string>(); // one finding per (signal, file) pair
   const layerByFile = new Map<string, string>();
   let astFileCount = 0;
@@ -847,6 +856,19 @@ export function analyzeCode(projectPath: string, projectTitle: string): CodeAnal
     } else {
       findings = scanFindings(rel, content);
     }
+
+    // BM25 search chunk: path tokens + layer + detected signal names
+    const layer = layerByFile.get(rel)!;
+    allChunks.push({
+      filePath: rel,
+      chunkType: "file",
+      layer,
+      chunkText: [
+        rel.replace(/[/._-]+/g, " "),
+        layer,
+        ...findings.map((f) => f.name),
+      ].join(" "),
+    });
 
     for (const f of findings) {
       const key = `${f.name}:${f.file}`;
@@ -921,6 +943,7 @@ export function analyzeCode(projectPath: string, projectTitle: string): CodeAnal
 
   return {
     findings: allFindings,
+    chunks: allChunks,
     graph: {
       nodes,
       links,

@@ -43,6 +43,13 @@
       "when": 1782106427748,
       "tag": "0005_deep_the_spike",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1782119376595,
+      "tag": "0006_dusty_lord_hawal",
+      "breakpoints": true
     }
   ]
 }

@@ -16,6 +16,8 @@ import {
   addCheckpointAction,
   toggleCheckpointAction,
 } from "./actions";
+import { searchWorkspace, hasSearchIndex } from "@/lib/services/search.service";
+import { Search } from "lucide-react";
 
 const READING_ORDER_MAX = 12;
 
@@ -23,16 +25,25 @@ export const dynamic = "force-dynamic";
 
 export default async function LearningMapPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ q?: string }>;
 }) {
   const { id: workspaceId } = await params;
+  const { q } = await searchParams;
 
-  const [wsResult, mapResult, clResult] = await Promise.all([
+  const [wsResult, mapResult, clResult, indexed] = await Promise.all([
     getWorkspaceById(workspaceId),
     getLearningMapByWorkspaceId(workspaceId),
     getConceptLinksByWorkspaceId(workspaceId),
+    hasSearchIndex(workspaceId),
   ]);
+
+  const searchResults =
+    indexed && q && q.trim().length >= 2
+      ? await searchWorkspace(workspaceId, q.trim())
+      : null;
 
   if (!wsResult.ok) notFound();
 
@@ -124,6 +135,62 @@ export default async function LearningMapPage({
 
           {/* Interactive knowledge graph */}
           <KnowledgeGraphLoader data={graph} />
+
+          {/* BM25 code search — only for code-analyzed projects */}
+          {indexed && (
+            <div className="space-y-2">
+              <form method="GET" className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+                  <input
+                    name="q"
+                    type="text"
+                    defaultValue={q ?? ""}
+                    placeholder="Search files — e.g. &quot;authentication&quot; or &quot;database query&quot;"
+                    className="w-full bg-[#0a0c10] border border-zinc-800 rounded-lg pl-8 pr-3 py-2 text-sm text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 focus:ring-1 focus:ring-zinc-700"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg transition-colors shrink-0"
+                >
+                  Search
+                </button>
+                {q && (
+                  <a
+                    href={`/workspaces/${workspaceId}/learning-map`}
+                    className="px-3 py-2 text-xs text-zinc-600 hover:text-zinc-400 rounded-lg transition-colors shrink-0 self-center"
+                  >
+                    clear
+                  </a>
+                )}
+              </form>
+
+              {searchResults && q && (
+                <div className="bg-[#0a0c10] border border-zinc-800 rounded-lg overflow-hidden">
+                  {searchResults.ok && searchResults.data.length > 0 ? (
+                    <ul className="divide-y divide-zinc-800/60">
+                      {searchResults.data.map((r) => (
+                        <li key={r.filePath} className="px-4 py-2.5 flex items-center gap-3">
+                          <span className="text-xs font-mono text-zinc-300 flex-1 truncate">{r.filePath}</span>
+                          {r.layer && (
+                            <span className="text-[10px] text-zinc-600 shrink-0">{r.layer}</span>
+                          )}
+                          <span className="text-[10px] text-cyan-700 font-mono shrink-0">
+                            {r.score.toFixed(2)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="px-4 py-3 text-xs text-zinc-600">
+                      No files matched &ldquo;{q}&rdquo; — try broader terms.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Suggested reading order (from topological sort — only for code-analyzed projects) */}
           {graph.readingOrder && graph.readingOrder.length > 0 && (
