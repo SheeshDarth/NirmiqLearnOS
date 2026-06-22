@@ -18,6 +18,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.101.0",
+    "@typescript-eslint/scope-manager": "^8.0.0",
+    "@typescript-eslint/typescript-estree": "^8.0.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "3d-force-graph": "^1.80.0",
     "better-sqlite3": "^12.10.0",

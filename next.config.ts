@@ -35,7 +35,12 @@ const nextConfig: NextConfig = {
   // bundled. Without this, Turbopack tries to bundle it into its render/
   // static-path worker processes, which crashes them (WorkerError) on the
   // dynamic /workspaces/[id] routes.
-  serverExternalPackages: ["better-sqlite3"],
+  serverExternalPackages: [
+    "better-sqlite3",
+    "@typescript-eslint/typescript-estree",
+    "@typescript-eslint/scope-manager",
+    "@typescript-eslint/visitor-keys",
+  ],
 
   // Apply security headers to every route
   async headers() {

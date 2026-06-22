@@ -36,6 +36,13 @@
       "when": 1782099911754,
       "tag": "0004_freezing_patriot",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1782106427748,
+      "tag": "0005_deep_the_spike",
+      "breakpoints": true
     }
   ]
 }

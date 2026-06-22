@@ -423,6 +423,7 @@ export async function analyzeProject(
         practiceTask: f.practiceTask,
         sourceFile: `${f.file}:${f.line}`,
         codeSnippet: f.snippet,
+        astConfidence: f.confidence,
       });
       if (r.ok) conceptsCreated++;
     }

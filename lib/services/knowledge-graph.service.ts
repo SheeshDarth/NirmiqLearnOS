@@ -11,7 +11,7 @@ import type { LearningMap } from "@/lib/services/learning-map.service";
 
 export type GraphNodeType = "project" | "layer" | "module" | "concept" | "file";
 
-export type GraphLinkKind = "contains" | "imports" | "flow";
+export type GraphLinkKind = "contains" | "imports" | "flow" | "cycle";
 
 export interface GraphNode {
   id: string;
@@ -25,12 +25,19 @@ export interface GraphNode {
 export interface GraphLink {
   source: string;
   target: string;
-  kind?: GraphLinkKind; // contains (structure) | imports (dependency) | flow (workflow)
+  kind?: GraphLinkKind;
 }
 
 export interface KnowledgeGraphData {
   nodes: GraphNode[];
   links: GraphLink[];
+  readingOrder?: string[];   // topologically sorted file paths
+  cycles?: string[][];       // each sub-array = one detected import cycle
+  stats?: {
+    fileCount: number;
+    importEdgeCount: number;
+    hubFiles: string[];
+  };
 }
 
 interface ConceptLinkLike {

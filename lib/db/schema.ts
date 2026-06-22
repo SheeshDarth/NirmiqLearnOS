@@ -164,6 +164,7 @@ export const conceptLinks = sqliteTable("concept_links", {
   // Code-grounded DSA: where the structure/algorithm was found
   sourceFile: text("source_file"),
   codeSnippet: text("code_snippet"),
+  astConfidence: text("ast_confidence"),
   createdAt: integer("created_at")
     .notNull()
     .$defaultFn(() => Date.now()),

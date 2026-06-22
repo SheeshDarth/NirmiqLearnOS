@@ -1,0 +1,1 @@
+ALTER TABLE `concept_links` ADD `ast_confidence` text;

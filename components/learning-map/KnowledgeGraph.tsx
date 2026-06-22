@@ -29,12 +29,13 @@ const colorOf = (n: GraphNode) => n.color ?? TYPE_COLOR[n.type] ?? "#9ca3af";
 
 // Runtime-enriched shapes the force libs add
 type RNode = GraphNode & { x?: number; y?: number };
-type RLink = { kind?: "contains" | "imports" | "flow" };
+type RLink = { kind?: "contains" | "imports" | "flow" | "cycle" };
 
 const LINK_STYLE = {
   flow: { color: "rgba(244,114,182,0.75)", width: 2.2, arrow: 4, particles: 4 },
   imports: { color: "rgba(148,163,184,0.30)", width: 1, arrow: 2.5, particles: 0 },
   contains: { color: "rgba(148,163,184,0.12)", width: 0.6, arrow: 0, particles: 0 },
+  cycle: { color: "rgba(251,191,36,0.70)", width: 1.5, arrow: 2.5, particles: 0 },
 } as const;
 const linkStyle = (l: RLink) => LINK_STYLE[l.kind ?? "contains"];
 
@@ -81,7 +82,7 @@ export default function KnowledgeGraph({ data }: { data: KnowledgeGraphData }) {
       for (const n of data.nodes) layers.set(TYPE_LABEL[n.type], colorOf(n));
     }
     const kinds = new Set((data.links as RLink[]).map((l) => l.kind ?? "contains"));
-    return { layers: [...layers.entries()], hasFlow: kinds.has("flow"), hasImports: kinds.has("imports") };
+    return { layers: [...layers.entries()], hasFlow: kinds.has("flow"), hasImports: kinds.has("imports"), hasCycle: kinds.has("cycle") };
   }, [data]);
 
   useEffect(() => {
@@ -272,6 +273,11 @@ export default function KnowledgeGraph({ data }: { data: KnowledgeGraphData }) {
         {legend.hasFlow && (
           <span className="flex items-center gap-1.5 text-xs text-pink-400/80">
             <span className="w-4 h-px bg-pink-400/70" /> workflow →
+          </span>
+        )}
+        {legend.hasCycle && (
+          <span className="flex items-center gap-1.5 text-xs text-amber-400/80">
+            <span className="w-4 h-px bg-amber-400/70" /> circular import
           </span>
         )}
         <span className="text-xs text-zinc-700 ml-auto">
