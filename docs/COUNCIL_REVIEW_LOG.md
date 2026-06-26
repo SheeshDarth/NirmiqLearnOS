@@ -379,9 +379,11 @@ Given 44 findings across two audits (many overlapping), what is the correct orde
 **Decision:**
 > Approve P0–P3 as the remediation sprint; defer P4 to opportunistic cleanup and P5 behind a second review. Fix the foundation before shipping anything new.
 
-**Status:** 🔄 In progress — P0, P1, P2 implemented (commits e69724c, 6f0be51, ca06d1b); P3 (session-log repair) to follow.
+**Status:** ✅ Remediation sprint complete — P0–P3 implemented (commits e69724c, 6f0be51, ca06d1b, 76cde32). P4 (opportunistic cleanup) and P5 (deferred features) remain behind a second review, per the original decision.
 
 **P2 implementation note (commit ca06d1b):** structured outputs (`messages.parse` + `zodOutputFormat`) replace regex-on-LLM-markdown persistence in `project-analyzer.service.ts`, behind a count-assertion + local-analyzer fallback. `nirmiq_analyze_project` now delegates to that shared service (one pipeline — H1 resolved; tsx resolves the `@/` alias, so the old "relative-imports only" constraint no longer holds). `explainCommand` uses structured outputs with a validated risk enum (H3) plus a static risk floor (M2). `add_debug_log` persists all 8 fields (H2). MCP dispatch is audit-logged to stderr (M1). Advisory tools now declare they do not auto-save (C2). Verified by lint + typecheck + build + tsx module-load; **live LLM verification on a real repo is still pending** (no API call was made during implementation). H4 (idempotent re-import) and L1 deferred to opportunistic cleanup.
+
+**P3 implementation note (commit 76cde32):** the session log was 100% dead — `pre-bash.mjs` ran its own LLM pass to stderr (PreToolUse, no command outcome) and never persisted. Split by responsibility: `pre-bash.mjs` is now a pure block-only safety guard (no LLM), and a new `post-bash.mts` PostToolUse hook logs each non-trivial command to `session_logs` via the canonical `explainCommand` + `createSessionLog` (no separate hidden LLM pass), capturing the outcome and attaching to a workspace via `NIRMIQ_WORKSPACE_ID`. Cost cap: skip list + 100 logs/hour budget. `lib/db/client.ts` honors `NIRMIQ_DATA_DIR` so the hook writes to the right DB regardless of cwd. **Verified end-to-end locally** (lint/typecheck/build; block-guard exit 2; a real `session_logs` row inserted via the static path; installer registers both hooks) — no API call needed.
 
 ---
 
@@ -393,4 +395,4 @@ Given 44 findings across two audits (many overlapping), what is the correct orde
 | REVIEW-002 | MCP server + CLI; no VS Code extension; security hardening | ✅ Accepted | Post-MVP |
 | REVIEW-003 | Import auto-populates all surfaces; content-first UI; manual forms kept but collapsed | ✅ Accepted | Post-MVP |
 | REVIEW-004 | Full architectural audit — 32 issues across 6 severity tiers; fix Tier 1+2 before any new features | ⚠️ Audit — action required | Pre-1.0 |
-| REVIEW-005 | Remediation sequencing — 6 phases (P0–P5); commit P0–P3, defer P4/P5 | 🔄 In progress — P0/P1/P2 done, P3 next | Pre-1.0 |
+| REVIEW-005 | Remediation sequencing — 6 phases (P0–P5); commit P0–P3, defer P4/P5 | ✅ P0–P3 done; P4/P5 deferred | Pre-1.0 |
