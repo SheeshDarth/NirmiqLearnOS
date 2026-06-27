@@ -127,6 +127,7 @@ export async function generateQuestions(
     });
 
     const text = extractText(response);
+    if (!text) return "⚠️ The model returned no usable text — please try again.";
     return `🧠 AI-generated explain-back questions:\n\n${text}\n\n─\nThese are suggestions only — they are NOT saved automatically. Call add_question to persist the ones you want in a workspace.`;
   } catch (e) {
     return `❌ ${sanitiseError(e)}`;
@@ -180,6 +181,7 @@ export async function suggestConcepts(
     });
 
     const text = extractText(response);
+    if (!text) return "⚠️ The model returned no usable text — please try again.";
     return `🔗 AI-suggested DSA/CS concepts:\n\n${text}\n\n─\nThese are suggestions only — they are NOT saved automatically. Call add_concept_link to persist the ones you want in a workspace.`;
   } catch (e) {
     return `❌ ${sanitiseError(e)}`;
@@ -239,6 +241,7 @@ export async function debugAssist(
     });
 
     const text = extractText(response);
+    if (!text) return "⚠️ The model returned no usable text — please try again.";
     return `🔍 AI debug analysis:\n\n${text}\n\n─\nThis is advisory only — it is NOT saved automatically. Call add_debug_log to record the diagnosis in a workspace.`;
   } catch (e) {
     return `❌ ${sanitiseError(e)}`;

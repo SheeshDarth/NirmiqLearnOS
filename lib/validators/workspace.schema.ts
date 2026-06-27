@@ -19,14 +19,3 @@ export const createWorkspaceSchema = z.object({
 });
 
 export type CreateWorkspaceInput = z.infer<typeof createWorkspaceSchema>;
-
-export const updateWorkspaceSchema = z.object({
-  title: z.string().min(1).max(100).optional(),
-  description: z.string().max(500).nullable().optional(),
-  type: z.enum(["project", "dsa", "exam", "topic"]).optional(),
-  goal: z.string().max(300).nullable().optional(),
-  status: z.enum(["active", "paused", "completed", "archived"]).optional(),
-  progressScore: z.number().int().min(0).max(100).optional(),
-});
-
-export type UpdateWorkspaceInput = z.infer<typeof updateWorkspaceSchema>;

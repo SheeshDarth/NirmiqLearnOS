@@ -2,10 +2,7 @@ import { db } from "@/lib/db/client";
 import { workspaces } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import type { ServiceResult } from "@/lib/types";
-import type {
-  CreateWorkspaceInput,
-  UpdateWorkspaceInput,
-} from "@/lib/validators/workspace.schema";
+import type { CreateWorkspaceInput } from "@/lib/validators/workspace.schema";
 
 export type Workspace = typeof workspaces.$inferSelect;
 
@@ -67,47 +64,6 @@ export async function listWorkspaces(filter?: {
   }
 }
 
-export async function updateWorkspace(
-  id: string,
-  input: UpdateWorkspaceInput
-): Promise<ServiceResult<Workspace>> {
-  try {
-    const [updated] = await db
-      .update(workspaces)
-      .set({ ...input, updatedAt: Date.now() })
-      .where(eq(workspaces.id, id))
-      .returning();
-    if (!updated)
-      return { ok: false, error: "Workspace not found", code: "NOT_FOUND" };
-    return { ok: true, data: updated };
-  } catch {
-    return { ok: false, error: "Failed to update workspace", code: "DB_ERROR" };
-  }
-}
-
-export async function archiveWorkspace(
-  id: string
-): Promise<ServiceResult<Workspace>> {
-  return updateWorkspace(id, { status: "archived" });
-}
-
-export async function calculateWorkspaceProgress(
-  id: string
-): Promise<ServiceResult<number>> {
-  try {
-    const [ws] = await db
-      .select({ progressScore: workspaces.progressScore })
-      .from(workspaces)
-      .where(eq(workspaces.id, id))
-      .limit(1);
-    if (!ws)
-      return { ok: false, error: "Workspace not found", code: "NOT_FOUND" };
-    return { ok: true, data: ws.progressScore };
-  } catch {
-    return {
-      ok: false,
-      error: "Failed to calculate progress",
-      code: "DB_ERROR",
-    };
-  }
-}
+// Note: updateWorkspace / archiveWorkspace / calculateWorkspaceProgress were
+// removed as dead code (P4). progressScore is written directly by
+// learning-map.service.ts when checkpoint completion changes.

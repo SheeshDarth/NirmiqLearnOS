@@ -48,21 +48,6 @@ export async function getDebugLogsByWorkspaceId(
   }
 }
 
-export async function getDebugLogById(
-  id: string
-): Promise<ServiceResult<DebugLog>> {
-  try {
-    const [log] = await db
-      .select()
-      .from(debugLogs)
-      .where(eq(debugLogs.id, id));
-    if (!log) return { ok: false, error: "Debug log not found", code: "NOT_FOUND" };
-    return { ok: true, data: log };
-  } catch {
-    return { ok: false, error: "Failed to fetch debug log", code: "DB_ERROR" };
-  }
-}
-
 export async function updateDebugLog(
   id: string,
   input: UpdateDebugLogInput

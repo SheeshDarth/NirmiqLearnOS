@@ -53,18 +53,3 @@ export async function getSessionLogsByWorkspaceId(
     return { ok: false, error: String(e) };
   }
 }
-
-export async function getRecentSessionLogs(
-  limit = 30
-): Promise<ServiceResult<SessionLogEntry[]>> {
-  try {
-    const entries = await db
-      .select()
-      .from(sessionLogs)
-      .orderBy(desc(sessionLogs.createdAt))
-      .limit(limit);
-    return { ok: true, data: entries };
-  } catch (e) {
-    return { ok: false, error: String(e) };
-  }
-}
