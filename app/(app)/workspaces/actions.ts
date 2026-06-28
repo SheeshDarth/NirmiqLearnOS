@@ -5,6 +5,7 @@ import {
   createWorkspace,
   deleteWorkspace,
 } from "@/lib/services/workspace.service";
+import { reanalyzeProject } from "@/lib/services/project-analyzer.service";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getString, getUUID } from "@/lib/utils/server";
@@ -46,4 +47,23 @@ export async function deleteWorkspaceAction(formData: FormData): Promise<void> {
 
   revalidatePath("/workspaces");
   redirect("/workspaces");
+}
+
+export async function reanalyzeWorkspaceAction(
+  _prev: { error?: string } | null,
+  formData: FormData
+): Promise<{ error?: string } | null> {
+  const id = getUUID(formData, "workspaceId");
+  if (!id) return { error: "Invalid workspace id." };
+
+  const apiKey = process.env.ANTHROPIC_API_KEY || undefined;
+  const result = await reanalyzeProject(id, apiKey);
+  if (!result.ok) return { error: result.error };
+
+  // Refresh every surface that reads the regenerated analysis.
+  revalidatePath(`/workspaces/${id}`);
+  revalidatePath(`/workspaces/${id}/learning-map`);
+  revalidatePath(`/workspaces/${id}/explain-back`);
+  revalidatePath(`/workspaces/${id}/dsa-bridge`);
+  return null;
 }
