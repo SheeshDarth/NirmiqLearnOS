@@ -65,21 +65,28 @@ export interface CodeAnalysis {
   chunks: CodeChunk[];
   graph: KnowledgeGraphData;
   fileCount: number;
+  /** True when the project exceeded MAX_FILES and some files were not scanned. */
+  truncated: boolean;
 }
 
 // ── File walking ─────────────────────────────────────────────────────────────
-function walk(dir: string, root: string, acc: string[]): void {
-  if (acc.length >= MAX_FILES) return;
+function walk(
+  dir: string,
+  root: string,
+  acc: string[],
+  state: { truncated: boolean }
+): void {
+  if (acc.length >= MAX_FILES) { state.truncated = true; return; }
   const entries = (() => {
     try { return readdirSync(dir, { withFileTypes: true }); } catch { return null; }
   })();
   if (!entries) return;
   for (const e of entries) {
-    if (acc.length >= MAX_FILES) return;
+    if (acc.length >= MAX_FILES) { state.truncated = true; return; }
     if (e.name.startsWith(".") && e.name !== ".") continue;
     if (e.isDirectory()) {
       if (IGNORE_DIRS.has(e.name)) continue;
-      walk(path.join(dir, e.name), root, acc);
+      walk(path.join(dir, e.name), root, acc, state);
     } else if (CODE_EXT.test(e.name)) {
       const full = path.join(dir, e.name);
       try {
@@ -820,7 +827,8 @@ function computePageRank(
 export function analyzeCode(projectPath: string, projectTitle: string): CodeAnalysis {
   const root = path.resolve(projectPath);
   const files: string[] = [];
-  walk(root, root, files);
+  const walkState = { truncated: false };
+  walk(root, root, files, walkState);
   const fileSet = new Set(files);
 
   const importEdges: Array<[string, string]> = [];
@@ -956,5 +964,6 @@ export function analyzeCode(projectPath: string, projectTitle: string): CodeAnal
       },
     },
     fileCount: files.length,
+    truncated: walkState.truncated,
   };
 }

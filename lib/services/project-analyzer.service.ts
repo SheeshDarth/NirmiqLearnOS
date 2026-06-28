@@ -644,8 +644,12 @@ async function persistAnalysis(
   // Read the real source code: extract code-grounded DSA findings + build the
   // architecture/workflow graph. Best-effort — never fail the import over this.
   let graphJson: string | undefined;
+  let analysisTruncated = false;
+  let scannedFileCount = 0;
   try {
     const code = analyzeCode(resolvedPath, projectName);
+    analysisTruncated = code.truncated;
+    scannedFileCount = code.fileCount;
 
     for (const f of code.findings) {
       const r = await createConceptLinkWithSource(workspaceId, {
@@ -674,9 +678,14 @@ async function persistAnalysis(
     /* code analysis is best-effort */
   }
 
-  // Auto-create Learning Map from analysis (+ the real architecture graph)
+  // Auto-create Learning Map from analysis (+ the real architecture graph). When
+  // the project was large enough to hit the file cap, say so honestly in the
+  // summary instead of presenting a partial analysis as if it were complete.
   const mapContent = buildLearningMapContent(analysisText, projectName, structured);
-  await createLearningMapWithContent(workspaceId, { ...mapContent, graphJson });
+  const summary = analysisTruncated
+    ? `${mapContent.summary ? mapContent.summary + "\n\n" : ""}⚠️ Large project — code analysis covered ${scannedFileCount} source files (ranked by importance); some files were not scanned.`
+    : mapContent.summary;
+  await createLearningMapWithContent(workspaceId, { ...mapContent, summary, graphJson });
 
   return { questionsCreated, conceptsCreated };
 }
