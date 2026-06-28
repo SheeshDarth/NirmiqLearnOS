@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { formatDate } from "@/lib/utils";
+import { DeleteWorkspaceButton } from "@/components/workspace/DeleteWorkspaceButton";
 
 const TYPE_META = {
   project: { label: "Project", icon: FolderOpen, color: "text-cyan-400", bg: "bg-cyan-500/10" },
@@ -81,15 +82,18 @@ export default async function WorkspaceDetailPage({
             </div>
           </div>
 
-          <a
-            href={`/workspaces/${ws.id}/export`}
-            download
-            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-100 px-3 py-2 rounded-md border border-zinc-800 hover:border-zinc-600 transition-colors shrink-0"
-            title="Download workspace as Markdown"
-          >
-            <Download size={13} />
-            Export
-          </a>
+          <div className="flex items-center gap-2 shrink-0">
+            <a
+              href={`/workspaces/${ws.id}/export`}
+              download
+              className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-100 px-3 py-2 rounded-md border border-zinc-800 hover:border-zinc-600 transition-colors shrink-0"
+              title="Download workspace as Markdown"
+            >
+              <Download size={13} />
+              Export
+            </a>
+            <DeleteWorkspaceButton workspaceId={ws.id} />
+          </div>
         </div>
 
         {ws.goal && (

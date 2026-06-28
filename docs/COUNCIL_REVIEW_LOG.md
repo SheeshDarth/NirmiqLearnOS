@@ -387,6 +387,39 @@ Given 44 findings across two audits (many overlapping), what is the correct orde
 
 ---
 
+### REVIEW-006 — P5 Feature Scope (Post-Remediation)
+
+**Date:** 2026-06-28
+**Trigger:** P5 was explicitly gated behind a second review (per REVIEW-005). The P0–P4 remediation sprint is complete; decide which net-new *features* to build vs. defer, without overengineering a local-first single-user MVP. Candidates: workspace deletion (#13), real Topbar search, global session-log view for null-workspace hook entries, graph-implementation migration (#12), and H4 idempotent re-import.
+
+**Council Synthesis:**
+
+**Recommendation:** Build a tight two-item P5 — **(1) workspace deletion, then (2) H4 idempotent re-import** — in that order. Deletion is the single most painful real gap (today, a user who imports the wrong repo must hand-edit the SQLite file) and it is the prerequisite that makes idempotent re-import sensible (reuse-or-delete becomes a real choice). Everything else stays deferred. One small, shippable slice that closes the highest-value gap and the last open "high" agent finding (H4) together.
+
+**Risks:**
+- **Incomplete cascade on delete** → orphaned rows in `learning_maps`, `explain_back_questions`, `debug_logs`, `daily_logs`, `session_logs`, `search_chunks`, `concept_links`. *Mitigated:* every child FK already declares `onDelete: "cascade"` and `foreign_keys = ON` is set in `lib/db/client.ts`, so a single delete on `workspaces` cascades; verified with a throwaway script asserting zero orphans before shipping.
+- **Deletion is irreversible** (no undo). *Mitigated:* a two-step confirm in a small client component; the `archived` status remains available if soft-delete is ever wanted (not built now).
+- **H4 changes import behavior.** *Mitigated:* only block a non-archived, exact-resolved-path match; return a clear "already imported — delete it first" message rather than silently reusing or duplicating.
+
+**Simplest Path:**
+1. `deleteWorkspace(id)` in `workspace.service.ts` — relies on the configured cascade, returns `ServiceResult`.
+2. `deleteWorkspaceAction` in `app/(app)/workspaces/actions.ts` (`getUUID` → service → `revalidatePath` → `redirect("/workspaces")`).
+3. `DeleteWorkspaceButton.tsx` client component (two-step confirm) on the workspace hub header.
+4. H4: in `analyzeProject`, check for an existing non-archived workspace imported from the same resolved path before `createWorkspace`; short-circuit with a clear message if found.
+5. Verify: lint + typecheck + build, plus a throwaway script that creates → deletes a workspace and asserts no orphaned child rows.
+
+**What NOT to Build Yet:**
+- **Real Topbar search** — the BM25 index (`search_chunks`) is per-imported-file, not over workspaces/questions; cross-entity search needs its own scope decision. Defer.
+- **Global session-log view** — the per-workspace page plus setting `NIRMIQ_WORKSPACE_ID` already makes hook logs visible; a global aggregate (which would re-introduce `getRecentSessionLogs`, removed in P4) is a nice-to-have, not needed now.
+- **Graph-implementation migration (#12)** — pure tech debt; the documented fallback works. Defer.
+
+**Decision:**
+> Do P5 = workspace deletion + H4 idempotent re-import only. Defer real search, the global session-log view, and the graph migration.
+
+**Status:** ✅ Approved — implementing workspace deletion + H4 (see commit below).
+
+---
+
 ## Architecture Decisions Summary
 
 | ID | Decision | Outcome | Phase |
@@ -395,4 +428,5 @@ Given 44 findings across two audits (many overlapping), what is the correct orde
 | REVIEW-002 | MCP server + CLI; no VS Code extension; security hardening | ✅ Accepted | Post-MVP |
 | REVIEW-003 | Import auto-populates all surfaces; content-first UI; manual forms kept but collapsed | ✅ Accepted | Post-MVP |
 | REVIEW-004 | Full architectural audit — 32 issues across 6 severity tiers; fix Tier 1+2 before any new features | ⚠️ Audit — action required | Pre-1.0 |
-| REVIEW-005 | Remediation sequencing — 6 phases (P0–P5); commit P0–P3, defer P4/P5 | ✅ P0–P3 done; P4/P5 deferred | Pre-1.0 |
+| REVIEW-005 | Remediation sequencing — 6 phases (P0–P5); commit P0–P3, defer P4/P5 | ✅ P0–P4 done; P5 gated | Pre-1.0 |
+| REVIEW-006 | P5 feature scope — build workspace deletion + H4 idempotent re-import; defer search/global-log/graph migration | ✅ Approved — implementing | Pre-1.0 |

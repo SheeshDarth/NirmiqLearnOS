@@ -1,10 +1,13 @@
 "use server";
 
 import { createWorkspaceSchema } from "@/lib/validators/workspace.schema";
-import { createWorkspace } from "@/lib/services/workspace.service";
+import {
+  createWorkspace,
+  deleteWorkspace,
+} from "@/lib/services/workspace.service";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getString } from "@/lib/utils/server";
+import { getString, getUUID } from "@/lib/utils/server";
 
 export type CreateWorkspaceState = { error?: string } | null;
 
@@ -33,4 +36,14 @@ export async function createWorkspaceAction(
 
   revalidatePath("/workspaces");
   redirect(`/workspaces/${result.data.id}`);
+}
+
+export async function deleteWorkspaceAction(formData: FormData): Promise<void> {
+  const id = getUUID(formData, "workspaceId");
+  if (!id) return;
+
+  await deleteWorkspace(id);
+
+  revalidatePath("/workspaces");
+  redirect("/workspaces");
 }

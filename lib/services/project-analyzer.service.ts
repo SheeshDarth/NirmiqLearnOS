@@ -15,7 +15,7 @@ import * as z from "zod/v4";
 import { readdirSync, readFileSync, existsSync, mkdirSync } from "fs";
 import { execSync } from "child_process";
 import path from "path";
-import { createWorkspace } from "@/lib/services/workspace.service";
+import { createWorkspace, listWorkspaces } from "@/lib/services/workspace.service";
 import { createQuestion } from "@/lib/services/explain-back.service";
 import {
   createConceptLink,
@@ -335,6 +335,24 @@ export async function analyzeProject(
     };
   }
   const projectName = options.workspaceName ?? path.basename(resolvedPath);
+
+  // H4 — idempotent re-import guard. If this exact path is already imported into
+  // a non-archived workspace, don't silently create a duplicate. Tell the user
+  // to delete the existing one first (deletion now exists — see deleteWorkspace).
+  // Checked before any analysis so a duplicate never costs an API call.
+  const importMarker = `Imported from: ${resolvedPath}`;
+  const existing = await listWorkspaces();
+  if (existing.ok) {
+    const dup = existing.data.find(
+      (w) => w.description === importMarker && w.status !== "archived"
+    );
+    if (dup) {
+      return {
+        ok: false,
+        error: `"${dup.title}" was already imported from this path. Delete that workspace first if you want to re-import it fresh.`,
+      };
+    }
+  }
 
   // Gather context
   const fileTree = getFileTree(resolvedPath).join("\n").slice(0, 3000);

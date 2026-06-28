@@ -64,6 +64,29 @@ export async function listWorkspaces(filter?: {
   }
 }
 
+export async function deleteWorkspace(
+  id: string
+): Promise<ServiceResult<true>> {
+  try {
+    const [existing] = await db
+      .select({ id: workspaces.id })
+      .from(workspaces)
+      .where(eq(workspaces.id, id))
+      .limit(1);
+    if (!existing)
+      return { ok: false, error: "Workspace not found", code: "NOT_FOUND" };
+
+    // Every child table (learning_maps, explain_back_questions, debug_logs,
+    // daily_logs, session_logs, search_chunks, concept_links) declares
+    // onDelete: "cascade" and `foreign_keys = ON` is set in lib/db/client.ts,
+    // so deleting the workspace row removes all dependent rows in one statement.
+    await db.delete(workspaces).where(eq(workspaces.id, id));
+    return { ok: true, data: true };
+  } catch {
+    return { ok: false, error: "Failed to delete workspace", code: "DB_ERROR" };
+  }
+}
+
 // Note: updateWorkspace / archiveWorkspace / calculateWorkspaceProgress were
 // removed as dead code (P4). progressScore is written directly by
 // learning-map.service.ts when checkpoint completion changes.
