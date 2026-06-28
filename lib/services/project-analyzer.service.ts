@@ -15,7 +15,11 @@ import * as z from "zod/v4";
 import { readdirSync, readFileSync, existsSync, mkdirSync } from "fs";
 import { execSync } from "child_process";
 import path from "path";
-import { createWorkspace, listWorkspaces } from "@/lib/services/workspace.service";
+import {
+  createWorkspace,
+  listWorkspaces,
+  getWorkspaceById,
+} from "@/lib/services/workspace.service";
 import { createQuestion } from "@/lib/services/explain-back.service";
 import {
   createConceptLink,
@@ -25,6 +29,14 @@ import { createLearningMapWithContent } from "@/lib/services/learning-map.servic
 import { detectStack, generateLocalAnalysisText } from "@/lib/services/local-analyzer.service";
 import { analyzeCode } from "@/lib/services/code-analyzer.service";
 import type { ServiceResult } from "@/lib/types";
+import { db } from "@/lib/db/client";
+import {
+  explainBackQuestions,
+  conceptLinks,
+  learningMaps,
+  searchChunks,
+} from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -354,74 +366,10 @@ export async function analyzeProject(
     }
   }
 
-  // Gather context
-  const fileTree = getFileTree(resolvedPath).join("\n").slice(0, 3000);
-  const keyFileContents = readKeyFiles(resolvedPath).slice(0, 8000);
-
-  let analysisText: string;
-  let structured: ParsedAnalysis | null = null;
-
-  if (!anthropicApiKey) {
-    // ── Local heuristic analysis (no API key needed) ───────────────────────
-    const stack = detectStack(resolvedPath, projectName);
-    analysisText = generateLocalAnalysisText(stack, fileTree);
-  } else {
-    // ── AI-powered analysis via Claude API ────────────────────────────────
-    const client = new Anthropic({ apiKey: anthropicApiKey });
-    try {
-      const message = await client.messages.parse({
-        model: "claude-opus-4-8",
-        max_tokens: 8192,
-        thinking: { type: "adaptive" },
-        output_config: { format: zodOutputFormat(AnalysisSchema) },
-        messages: [
-          {
-            role: "user",
-            content: [
-              `## Project: ${projectName}`,
-              `## Path: ${resolvedPath}`,
-              "",
-              "## File tree",
-              "```",
-              fileTree,
-              "```",
-              "",
-              "## Key files",
-              keyFileContents,
-              "",
-              "You are a senior software engineer and educator analysing this project for",
-              "someone who built it with AI coding tools and may not fully understand it.",
-              "Write plain English with no unexplained jargon. Be specific to THIS project;",
-              "never give generic answers. Fill every field of the required structure:",
-              "- whatItDoes: 2-3 plain sentences on the problem it solves.",
-              "- techStack: each technology and its role in THIS project.",
-              "- howItWorks: 4-6 sentences on how the pieces connect (analogies welcome).",
-              "- keyFiles: the most important files and each one's job.",
-              "- understandAreas: exactly 5 areas to understand, ordered by importance.",
-              "- questions: exactly 10 explain-back questions, progressively harder; use only",
-              "  the difficulty values beginner, intermediate, advanced (about 2 / 3 / 5).",
-              "- concepts: 5 key CS/DSA concepts and how each appears in THIS codebase.",
-              "- risks: 3 specific fragile spots and why each could fail.",
-            ].join("\n"),
-          },
-        ],
-      });
-      structured = message.parsed_output;
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      return { ok: false, error: `AI analysis failed: ${msg.slice(0, 200)}` };
-    }
-
-    // Count assertion + fallback: if the structured parse came back empty or
-    // invalid, degrade to the local heuristic rather than persisting nothing.
-    if (structured && structured.questions.length > 0) {
-      analysisText = renderAnalysisMarkdown(structured);
-    } else {
-      structured = null;
-      const stack = detectStack(resolvedPath, projectName);
-      analysisText = generateLocalAnalysisText(stack, fileTree);
-    }
-  } // end if/else api key
+  // Compute the analysis (AI structured output, or local heuristic fallback).
+  const computed = await computeAnalysis(resolvedPath, projectName, anthropicApiKey);
+  if (!computed.ok) return computed;
+  const { analysisText, structured } = computed.data;
 
   // Create workspace
   const wsResult = await createWorkspace({
@@ -436,6 +384,210 @@ export async function analyzeProject(
   }
 
   const workspaceId = wsResult.data.id;
+  const { questionsCreated, conceptsCreated } = await persistAnalysis(
+    workspaceId,
+    resolvedPath,
+    projectName,
+    analysisText,
+    structured
+  );
+
+  return {
+    ok: true,
+    data: {
+      workspaceId,
+      workspaceName: projectName,
+      analysis: analysisText,
+      questionsCreated,
+      conceptsCreated,
+    },
+  };
+}
+
+/**
+ * Re-run analysis on a previously imported workspace, replacing its
+ * auto-generated learning artifacts (explain-back questions, concept links,
+ * learning map, search index) with fresh ones derived from the current state of
+ * the source code. User-authored data (debug logs, daily logs, session logs) is
+ * left untouched. H4 blocks re-importing the same path, so this is the
+ * sanctioned way to refresh a workspace whose code changed after import.
+ */
+export async function reanalyzeProject(
+  workspaceId: string,
+  anthropicApiKey?: string
+): Promise<ServiceResult<AnalysisResult>> {
+  const ws = await getWorkspaceById(workspaceId);
+  if (!ws.ok) return ws;
+
+  const marker = "Imported from: ";
+  const description = ws.data.description ?? "";
+  if (!description.startsWith(marker)) {
+    return {
+      ok: false,
+      error:
+        "This workspace was not created from an imported project, so there is nothing to refresh.",
+    };
+  }
+  const resolvedPath = description.slice(marker.length);
+
+  if (!existsSync(resolvedPath)) {
+    return {
+      ok: false,
+      error: `The original project folder no longer exists at "${resolvedPath}".`,
+    };
+  }
+  if (isSystemPath(resolvedPath)) {
+    return { ok: false, error: "Refresh blocked: the stored path is a system directory." };
+  }
+
+  const projectName = ws.data.title;
+
+  // Compute fresh analysis BEFORE deleting anything, so a failed re-analysis
+  // never wipes the existing content.
+  const computed = await computeAnalysis(resolvedPath, projectName, anthropicApiKey);
+  if (!computed.ok) return computed;
+
+  await clearAnalysisArtifacts(workspaceId);
+
+  const { questionsCreated, conceptsCreated } = await persistAnalysis(
+    workspaceId,
+    resolvedPath,
+    projectName,
+    computed.data.analysisText,
+    computed.data.structured
+  );
+
+  return {
+    ok: true,
+    data: {
+      workspaceId,
+      workspaceName: projectName,
+      analysis: computed.data.analysisText,
+      questionsCreated,
+      conceptsCreated,
+    },
+  };
+}
+
+/**
+ * Remove the auto-generated analysis artifacts for a workspace so a fresh
+ * analysis can replace them. Deletes questions, concept links, the search
+ * index, and learning maps — NOT user-authored debug/daily/session logs.
+ */
+async function clearAnalysisArtifacts(workspaceId: string): Promise<void> {
+  await db
+    .delete(explainBackQuestions)
+    .where(eq(explainBackQuestions.workspaceId, workspaceId));
+  await db.delete(conceptLinks).where(eq(conceptLinks.workspaceId, workspaceId));
+  await db.delete(searchChunks).where(eq(searchChunks.workspaceId, workspaceId));
+  await db.delete(learningMaps).where(eq(learningMaps.workspaceId, workspaceId));
+}
+
+/**
+ * Compute the project analysis: structured AI output when an API key is present
+ * (with a local-heuristic fallback if the parse comes back empty), otherwise
+ * the local heuristic. Returns the rendered markdown plus the structured object
+ * (null when the local path was used). Performs no DB writes.
+ */
+async function computeAnalysis(
+  resolvedPath: string,
+  projectName: string,
+  anthropicApiKey?: string
+): Promise<
+  ServiceResult<{ analysisText: string; structured: ParsedAnalysis | null }>
+> {
+  const fileTree = getFileTree(resolvedPath).join("\n").slice(0, 3000);
+  const keyFileContents = readKeyFiles(resolvedPath).slice(0, 8000);
+
+  if (!anthropicApiKey) {
+    // ── Local heuristic analysis (no API key needed) ───────────────────────
+    const stack = detectStack(resolvedPath, projectName);
+    return {
+      ok: true,
+      data: {
+        analysisText: generateLocalAnalysisText(stack, fileTree),
+        structured: null,
+      },
+    };
+  }
+
+  // ── AI-powered analysis via Claude API ────────────────────────────────
+  const client = new Anthropic({ apiKey: anthropicApiKey });
+  let structured: ParsedAnalysis | null = null;
+  try {
+    const message = await client.messages.parse({
+      model: "claude-opus-4-8",
+      max_tokens: 8192,
+      thinking: { type: "adaptive" },
+      output_config: { format: zodOutputFormat(AnalysisSchema) },
+      messages: [
+        {
+          role: "user",
+          content: [
+            `## Project: ${projectName}`,
+            `## Path: ${resolvedPath}`,
+            "",
+            "## File tree",
+            "```",
+            fileTree,
+            "```",
+            "",
+            "## Key files",
+            keyFileContents,
+            "",
+            "You are a senior software engineer and educator analysing this project for",
+            "someone who built it with AI coding tools and may not fully understand it.",
+            "Write plain English with no unexplained jargon. Be specific to THIS project;",
+            "never give generic answers. Fill every field of the required structure:",
+            "- whatItDoes: 2-3 plain sentences on the problem it solves.",
+            "- techStack: each technology and its role in THIS project.",
+            "- howItWorks: 4-6 sentences on how the pieces connect (analogies welcome).",
+            "- keyFiles: the most important files and each one's job.",
+            "- understandAreas: exactly 5 areas to understand, ordered by importance.",
+            "- questions: exactly 10 explain-back questions, progressively harder; use only",
+            "  the difficulty values beginner, intermediate, advanced (about 2 / 3 / 5).",
+            "- concepts: 5 key CS/DSA concepts and how each appears in THIS codebase.",
+            "- risks: 3 specific fragile spots and why each could fail.",
+          ].join("\n"),
+        },
+      ],
+    });
+    structured = message.parsed_output;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, error: `AI analysis failed: ${msg.slice(0, 200)}` };
+  }
+
+  // Count assertion + fallback: if the structured parse came back empty or
+  // invalid, degrade to the local heuristic rather than persisting nothing.
+  if (structured && structured.questions.length > 0) {
+    return {
+      ok: true,
+      data: { analysisText: renderAnalysisMarkdown(structured), structured },
+    };
+  }
+  const stack = detectStack(resolvedPath, projectName);
+  return {
+    ok: true,
+    data: {
+      analysisText: generateLocalAnalysisText(stack, fileTree),
+      structured: null,
+    },
+  };
+}
+
+/**
+ * Persist an analysis into a workspace: explain-back questions, concept links,
+ * code-grounded DSA findings, the architecture graph, the search index, and the
+ * learning map. Returns how many questions/concepts were created.
+ */
+async function persistAnalysis(
+  workspaceId: string,
+  resolvedPath: string,
+  projectName: string,
+  analysisText: string,
+  structured: ParsedAnalysis | null
+): Promise<{ questionsCreated: number; conceptsCreated: number }> {
   let questionsCreated = 0;
   let conceptsCreated = 0;
 
@@ -526,14 +678,5 @@ export async function analyzeProject(
   const mapContent = buildLearningMapContent(analysisText, projectName, structured);
   await createLearningMapWithContent(workspaceId, { ...mapContent, graphJson });
 
-  return {
-    ok: true,
-    data: {
-      workspaceId,
-      workspaceName: projectName,
-      analysis: analysisText,
-      questionsCreated,
-      conceptsCreated,
-    },
-  };
+  return { questionsCreated, conceptsCreated };
 }

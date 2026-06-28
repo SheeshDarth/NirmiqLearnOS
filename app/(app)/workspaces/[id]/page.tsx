@@ -18,6 +18,7 @@ import {
 import Link from "next/link";
 import { formatDate } from "@/lib/utils";
 import { DeleteWorkspaceButton } from "@/components/workspace/DeleteWorkspaceButton";
+import { RefreshAnalysisButton } from "@/components/workspace/RefreshAnalysisButton";
 
 const TYPE_META = {
   project: { label: "Project", icon: FolderOpen, color: "text-cyan-400", bg: "bg-cyan-500/10" },
@@ -92,6 +93,9 @@ export default async function WorkspaceDetailPage({
               <Download size={13} />
               Export
             </a>
+            {ws.description?.startsWith("Imported from: ") && (
+              <RefreshAnalysisButton workspaceId={ws.id} />
+            )}
             <DeleteWorkspaceButton workspaceId={ws.id} />
           </div>
         </div>
