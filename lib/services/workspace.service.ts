@@ -1,6 +1,6 @@
 import { db } from "@/lib/db/client";
 import { workspaces } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, type SQL } from "drizzle-orm";
 import type { ServiceResult } from "@/lib/types";
 import type { CreateWorkspaceInput } from "@/lib/validators/workspace.schema";
 
@@ -47,18 +47,17 @@ export async function listWorkspaces(filter?: {
   status?: Workspace["status"];
 }): Promise<ServiceResult<Workspace[]>> {
   try {
-    const all = await db
+    const conditions: SQL[] = [];
+    if (filter?.type) conditions.push(eq(workspaces.type, filter.type));
+    if (filter?.status) conditions.push(eq(workspaces.status, filter.status));
+
+    const data = await db
       .select()
       .from(workspaces)
+      .where(conditions.length ? and(...conditions) : undefined)
       .orderBy(desc(workspaces.createdAt));
 
-    const filtered = all.filter((w) => {
-      if (filter?.type && w.type !== filter.type) return false;
-      if (filter?.status && w.status !== filter.status) return false;
-      return true;
-    });
-
-    return { ok: true, data: filtered };
+    return { ok: true, data };
   } catch {
     return { ok: false, error: "Failed to list workspaces", code: "DB_ERROR" };
   }

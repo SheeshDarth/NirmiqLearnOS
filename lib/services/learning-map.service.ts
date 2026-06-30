@@ -152,7 +152,8 @@ export async function getAllLearningMaps(): Promise<
     const rows = await db
       .select()
       .from(learningMaps)
-      .orderBy(desc(learningMaps.updatedAt));
+      .orderBy(desc(learningMaps.updatedAt))
+      .limit(50);
     return { ok: true, data: rows.map(toPresentation) };
   } catch {
     return {
