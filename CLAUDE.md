@@ -11,7 +11,7 @@ graph, code-grounded DSA breakdown, explain-back questions. No cloud, no telemet
 - SQLite via `better-sqlite3` (sync driver) + Drizzle ORM · Zod v4 for validation
 - Graph viz: `force-graph` / `3d-force-graph` / `three` (client-only)
 - `@anthropic-ai/sdk` (optional AI analysis) · `@modelcontextprotocol/sdk` (MCP server)
-- **There is NO Zustand / Redux** (no global client store) and **NO test runner.**
+- **There is NO Zustand / Redux** (no global client store). Tests: **node:test via tsx only** (`npm test`) — **NO Jest/Vitest.**
 
 ## Commands (exact — copy, don't invent)
 | Task | Command |
@@ -23,13 +23,16 @@ graph, code-grounded DSA breakdown, explain-back questions. No cloud, no telemet
 | Generate migration | `npm run db:generate`  (drizzle-kit generate) |
 | Apply migration | `npm run db:migrate`  (drizzle-kit migrate) |
 | MCP server | `npm run mcp`  (tsx mcp-server/index.ts) |
+| Tests | `npm test`  (tsx --test tests/import-pipeline.test.mts) |
 
-## Verification & "tests"
+## Verification & tests
 There is **no Jest/Vitest**. The verification gate after every change is, in order:
 `npm run lint` → `npm run typecheck` → `npm run build`. All three must pass.
-To exercise service/analyzer logic, write a **throwaway** `scripts/_*.mts` script, run it with
-`npx tsx scripts/_name.mts`, then **delete it** (these are scratch files, never committed).
-The `test` commit type exists but no automated suite does — don't claim tests ran when they didn't.
+**`npm test`** runs the import-pipeline suite (`tests/import-pipeline.test.mts`, node:test via tsx,
+isolated temp DB via `NIRMIQ_DATA_DIR`) — run it too when touching the analyzer/import/workspace services.
+For one-off exploration of service logic, write a **throwaway** `scripts/_*.mts` script, run it with
+`npx tsx scripts/_name.mts`, then **delete it** (scratch files, never committed).
+Don't claim tests ran when they didn't.
 
 ## Where code lives — CHECK HERE BEFORE WRITING ANYTHING NEW
 > The #1 rule: **reuse, don't recreate.** Before adding a function/component/type,

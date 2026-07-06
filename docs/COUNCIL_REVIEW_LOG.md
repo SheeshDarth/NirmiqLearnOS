@@ -420,6 +420,31 @@ Given 44 findings across two audits (many overlapping), what is the correct orde
 
 ---
 
+### REVIEW-007 — Test Approach for the Import Pipeline (#32)
+
+**Date:** 2026-07-06
+**Trigger:** #32 (zero automated tests for the import pipeline — the product's entire value creation) is the last open audit item. REVIEW-005 explicitly deferred "introduce a test runner" as a real architecture decision requiring its own review.
+
+**Council Synthesis:**
+
+**Recommendation:** Use **Node's built-in `node:test` runner driven by the already-installed `tsx`** (`tsx --test`). Zero new dependencies — tsx (4.x) is already a devDependency for the MCP server and hooks, resolves the `@/` alias, and forwards `--test` to node:test. One test file, `tests/import-pipeline.test.mts`, covering the audit's named functions end-to-end: `resolveProjectPath`, `analyzeCode` (signals, graph, truncation flag), and `analyzeProject` on a local path (local-heuristic extraction → questions/concepts persisted), plus the H4 dedup guard, `reanalyzeProject`, and the `deleteWorkspace` cascade. DB isolation via the existing `NIRMIQ_DATA_DIR` override pointed at a temp dir, migrated programmatically with drizzle's `migrate()` from `lib/db/migrations`. Add an `npm test` script and note it in CLAUDE.md.
+
+**Risks:**
+- **Module-load ordering** — `lib/db/client.ts` binds `NIRMIQ_DATA_DIR` at import time. *Mitigated:* the test sets the env var first and uses dynamic `await import(...)` for everything DB-touching.
+- **Test pollution of the real dev DB** — *Mitigated:* fresh temp data dir per run; nothing touches `data/nirmiqlearn.db`.
+- **AI-path coverage gap** — the structured-outputs branch needs an API key and live model; testing it would make the suite flaky/expensive. *Accepted:* the local-heuristic path and the shared persistence code are covered; the AI branch keeps its count-assertion fallback.
+
+**What NOT to Build Yet:**
+- No Vitest/Jest (new dependency + config surface for zero gain at this scale).
+- No component/E2E tests, no coverage tooling, no CI pipeline — single-user local MVP.
+
+**Decision:**
+> Add `node:test` via tsx with one import-pipeline test file and an `npm test` script; no new dependencies.
+
+**Status:** ✅ Implemented. `tests/import-pipeline.test.mts` — 8 tests, all passing (~18s): resolveProjectPath (GitHub + local), analyzeCode (signals incl. AST recursion, graph, truncation flag), analyzeProject local-heuristic end-to-end (extraction → persisted questions/concepts/map), H4 duplicate guard, system-path block, reanalyzeProject (replaces artifacts, keeps user data), deleteWorkspace cascade (zero orphans). `npm test` added; CLAUDE.md updated to reflect the suite. Note: `tests/*.test.mts` is executed by tsx but not covered by `tsc --noEmit` (tsconfig includes only `.ts`/`.tsx` — same as `hooks/post-bash.mts`).
+
+---
+
 ## Architecture Decisions Summary
 
 | ID | Decision | Outcome | Phase |
@@ -430,3 +455,4 @@ Given 44 findings across two audits (many overlapping), what is the correct orde
 | REVIEW-004 | Full architectural audit — 32 issues across 6 severity tiers; fix Tier 1+2 before any new features | ⚠️ Audit — action required | Pre-1.0 |
 | REVIEW-005 | Remediation sequencing — 6 phases (P0–P5); commit P0–P3, defer P4/P5 | ✅ P0–P4 done; P5 gated | Pre-1.0 |
 | REVIEW-006 | P5 feature scope — build workspace deletion + H4 idempotent re-import; defer search/global-log/graph migration | ✅ Implemented (commit 1003d3a) | Pre-1.0 |
+| REVIEW-007 | Import-pipeline tests (#32) — node:test via tsx, zero new deps; no Vitest/Jest/CI | ✅ Implemented — 8/8 passing | Pre-1.0 |
