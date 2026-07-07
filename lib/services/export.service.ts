@@ -3,7 +3,7 @@ import { getLearningMapByWorkspaceId } from "@/lib/services/learning-map.service
 import { getQuestionsByWorkspaceId } from "@/lib/services/explain-back.service";
 import { getDebugLogsByWorkspaceId } from "@/lib/services/debug-log.service";
 import { getConceptLinksByWorkspaceId } from "@/lib/services/concept-link.service";
-import { parseExpectedPoints } from "@/lib/utils";
+import { formatDate, parseExpectedPoints } from "@/lib/utils";
 import type { ServiceResult } from "@/lib/types";
 
 export type ExportPayload = {
@@ -30,13 +30,12 @@ function slug(title: string): string {
     .replace(/(^-|-$)/g, "");
 }
 
-function formatDate(ms: number): string {
-  return new Date(ms).toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-}
+// Long-form dates for the exported document (canonical formatDate is in lib/utils).
+const LONG_DATE: Intl.DateTimeFormatOptions = {
+  month: "long",
+  day: "numeric",
+  year: "numeric",
+};
 
 function hr(): string {
   return "\n\n---\n\n";
@@ -70,7 +69,7 @@ export async function generateWorkspaceMarkdown(
   lines.push(`# ${ws.title}`);
   lines.push("");
   lines.push(
-    `> Exported from NirmiqLearn OS on ${formatDate(Date.now())}`
+    `> Exported from NirmiqLearn OS on ${formatDate(Date.now(), LONG_DATE)}`
   );
   lines.push("");
 
@@ -78,7 +77,7 @@ export async function generateWorkspaceMarkdown(
   meta.push(`**Type:** ${ws.type}`);
   meta.push(`**Status:** ${ws.status}`);
   meta.push(`**Progress:** ${ws.progressScore}%`);
-  meta.push(`**Created:** ${formatDate(ws.createdAt)}`);
+  meta.push(`**Created:** ${formatDate(ws.createdAt, LONG_DATE)}`);
   lines.push(meta.join("  ·  "));
   lines.push("");
 
@@ -199,7 +198,7 @@ export async function generateWorkspaceMarkdown(
       const log = debugLogs[i];
       lines.push(`### Bug ${i + 1}: ${log.title}`);
       lines.push("");
-      lines.push(`*${formatDate(log.createdAt)}*`);
+      lines.push(`*${formatDate(log.createdAt, LONG_DATE)}*`);
       lines.push("");
 
       if (log.errorMessage) {
