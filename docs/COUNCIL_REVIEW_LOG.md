@@ -470,6 +470,26 @@ Given 44 findings across two audits (many overlapping), what is the correct orde
 
 ---
 
+### REVIEW-009 — Landing Strategy + Cost-Safe Cleanup
+
+**Date:** 2026-07-06
+**Trigger:** Branch is merge-ready with 15 atomic, individually-gated commits; the merge strategy decides whether that honest per-concern history survives. User is cost-sensitive on a flat Claude Code plan — the app's own `ANTHROPIC_API_KEY` path is billed separately per token.
+
+**Council Synthesis:**
+
+**Recommendation:** Preserve the 15 commits — **Rebase and merge** (or a `--no-ff` merge commit), never Squash, which would collapse eight council-reviewed decisions into one opaque blob. **Skip the paid AI smoke test** — the offline heuristic path is the default, is fully test-covered (10/10), and the AI branch fails safe to it; a live `messages.parse` call (~$0.05–0.20/import on Opus) spends real money to verify a path the user can validate for free the first time they actually add a key. Ship the F2/F4/F5 cleanup as **three separate free commits** (bug-class: dead code, dedup, missing export section).
+
+**Risks:** squash-by-habit erases history (mitigate: set repo merge button to Rebase-and-merge, or merge locally `--no-ff`); F5 touches the shared export read path (mitigate: reuse existing `getDailyLogsByWorkspaceId`, add one section only, gate with the suite); scope creep (mitigate: hard-stop after F2/F4/F5 — no #27/#28 cohesion work).
+
+**What NOT to Build Yet:** the paid AI smoke test (defer until a key is actually wanted); cross-feature cohesion (#27/#28), search, graph migration (each its own review).
+
+**Decision:**
+> Land the 15 commits individually (rebase-and-merge, never squash); skip the paid AI smoke test (offline path is default + tested + fails safe); ship F2/F4/F5 as three separate free commits.
+
+**Status:** ✅ Implemented. F2 (b3eca86 — dead `listTopFiles` removed), F4 (d1fddb1 — canonical `formatDate` reused), F5 (4c5b425 — Daily Log added to export). Suite 10/10; lint + typecheck + build clean. No API key used, no paid calls. Merge-strategy choice (rebase-and-merge vs local `--no-ff`) left to the user.
+
+---
+
 ## Architecture Decisions Summary
 
 | ID | Decision | Outcome | Phase |
@@ -482,3 +502,4 @@ Given 44 findings across two audits (many overlapping), what is the correct orde
 | REVIEW-006 | P5 feature scope — build workspace deletion + H4 idempotent re-import; defer search/global-log/graph migration | ✅ Implemented (commit 1003d3a) | Pre-1.0 |
 | REVIEW-007 | Import-pipeline tests (#32) — node:test via tsx, zero new deps; no Vitest/Jest/CI | ✅ Implemented — 8/8 passing | Pre-1.0 |
 | REVIEW-008 | Whole-project review — polish sprint: GitHub-pull on refresh, blended progress formula (#26), conceptType form enum (#30); defer cohesion/search/graph | ✅ Implemented — 10/10 tests | Pre-1.0 |
+| REVIEW-009 | Landing strategy — preserve 15 commits (rebase-and-merge, no squash); skip paid AI smoke test; F2/F4/F5 cleanup as 3 free commits | ✅ Implemented — cleanup done | Pre-1.0 |
