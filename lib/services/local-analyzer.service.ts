@@ -9,7 +9,7 @@
  * (question/concept parsing + DB writes) works identically.
  */
 
-import { readFileSync, existsSync, readdirSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import path from "path";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -223,19 +223,6 @@ export function detectStack(projectPath: string, projectName: string): DetectedS
     description,
     readmeContent,
   };
-}
-
-// ── Key files from actual directory ───────────────────────────────────────────
-
-function listTopFiles(projectPath: string): string[] {
-  try {
-    return readdirSync(projectPath, { withFileTypes: true })
-      .filter(e => !e.name.startsWith(".") && !["node_modules", ".next", "dist", "build", "__pycache__"].includes(e.name))
-      .map(e => e.isDirectory() ? `${e.name}/` : e.name)
-      .slice(0, 20);
-  } catch {
-    return [];
-  }
 }
 
 // ── Question banks ─────────────────────────────────────────────────────────────
@@ -597,7 +584,6 @@ export function generateLocalAnalysisText(
   }
 
   // ── KEY FILES ─────────────────────────────────────────────────
-  const topFiles = listTopFiles(stack.projectName.includes("/") ? stack.projectName : ".");
   const keyFileLines: string[] = [];
   // Describe well-known files
   const knownFiles: Record<string, string> = {
