@@ -3,6 +3,7 @@ import { getLearningMapByWorkspaceId } from "@/lib/services/learning-map.service
 import { getQuestionsByWorkspaceId } from "@/lib/services/explain-back.service";
 import { getDebugLogsByWorkspaceId } from "@/lib/services/debug-log.service";
 import { getConceptLinksByWorkspaceId } from "@/lib/services/concept-link.service";
+import { getDailyLogsByWorkspaceId } from "@/lib/services/daily-log.service";
 import { formatDate, parseExpectedPoints } from "@/lib/utils";
 import type { ServiceResult } from "@/lib/types";
 
@@ -44,13 +45,14 @@ function hr(): string {
 export async function generateWorkspaceMarkdown(
   workspaceId: string
 ): Promise<ServiceResult<ExportPayload>> {
-  const [wsResult, mapResult, questionsResult, debugResult, linksResult] =
+  const [wsResult, mapResult, questionsResult, debugResult, linksResult, dailyResult] =
     await Promise.all([
       getWorkspaceById(workspaceId),
       getLearningMapByWorkspaceId(workspaceId),
       getQuestionsByWorkspaceId(workspaceId),
       getDebugLogsByWorkspaceId(workspaceId),
       getConceptLinksByWorkspaceId(workspaceId),
+      getDailyLogsByWorkspaceId(workspaceId),
     ]);
 
   if (!wsResult.ok) {
@@ -62,6 +64,7 @@ export async function generateWorkspaceMarkdown(
   const questions = questionsResult.ok ? questionsResult.data : [];
   const debugLogs = debugResult.ok ? debugResult.data : [];
   const conceptLinks = linksResult.ok ? linksResult.data : [];
+  const dailyLogs = dailyResult.ok ? dailyResult.data : [];
 
   const lines: string[] = [];
 
@@ -269,6 +272,27 @@ export async function generateWorkspaceMarkdown(
           lines.push("");
         }
       }
+    }
+  }
+
+  // ── Daily Log ─────────────────────────────────────────────────────────────
+  lines.push(hr());
+  lines.push("## 📅 Daily Log");
+  lines.push("");
+
+  if (dailyLogs.length === 0) {
+    lines.push("_No daily logs recorded yet._");
+  } else {
+    lines.push(`**${dailyLogs.length} day(s) logged**`);
+    lines.push("");
+    for (const log of dailyLogs) {
+      lines.push(`### ${log.date}`);
+      lines.push("");
+      if (log.builtToday) { lines.push(`**Built:** ${log.builtToday}`); lines.push(""); }
+      if (log.understoodToday) { lines.push(`**Understood:** ${log.understoodToday}`); lines.push(""); }
+      if (log.unclearTopics) { lines.push(`**Still unclear:** ${log.unclearTopics}`); lines.push(""); }
+      if (log.bugsFaced) { lines.push(`**Bugs faced:** ${log.bugsFaced}`); lines.push(""); }
+      if (log.nextAction) { lines.push(`**Next action:** ${log.nextAction}`); lines.push(""); }
     }
   }
 
