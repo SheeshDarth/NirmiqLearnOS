@@ -38,18 +38,13 @@ cd NirmiqLearnOS
 npm install
 ```
 
-### 2. Set up the database
-
-```bash
-npm run db:generate
-npm run db:migrate
-```
-
-### 3. Run the app
+### 2. Run the app
 
 ```bash
 npm run dev
 ```
+
+Database migrations are applied automatically on first start — no manual setup needed. Requires Node.js 20+.
 
 Open [http://127.0.0.1:3000](http://127.0.0.1:3000) — the app binds to localhost only.
 
