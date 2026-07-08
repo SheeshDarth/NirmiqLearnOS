@@ -2,6 +2,9 @@
   "name": "nirmiqlearn-os",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20"
+  },
   "bin": {
     "nirmiqlearn": "./bin/nirmiq.mjs",
     "nirmiq": "./bin/nirmiq.mjs"
