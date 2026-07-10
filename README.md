@@ -1,6 +1,8 @@
-# NirmiqLearn OS
+# CodeSensei
 
 > **Build with AI, but learn like a real engineer.**
+>
+> _Formerly NirmiqLearn OS._
 
 A local-first learning OS that sits inside your IDE and makes sure you actually understand the code you ship — not just that it works.
 
@@ -10,13 +12,13 @@ A local-first learning OS that sits inside your IDE and makes sure you actually 
 
 You use Cursor, Claude Code, or Copilot to build faster. Your code works. But when someone asks *why* you made a design decision, or *what* the time complexity is, or *how* you'd extend it — the answer isn't there. The AI wrote it. You shipped it. But you didn't learn it.
 
-NirmiqLearn OS fixes this without slowing you down.
+CodeSensei fixes this without slowing you down.
 
 ---
 
 ## How it works
 
-NirmiqLearn connects to your AI coding assistant (Claude Code, Cursor, Windsurf) via MCP. While you build, your assistant can automatically:
+CodeSensei connects to your AI coding assistant (Claude Code, Cursor, Windsurf) via MCP. While you build, your assistant can automatically:
 
 - Log debug sessions with root cause and fix
 - Generate explain-back questions from your code *(Pro)*
@@ -159,7 +161,7 @@ Then restart the MCP server. The 3 AI tools appear automatically.
 - **Zero telemetry** — no analytics, no network calls, no tracking.
 - **Localhost only** — server binds to `127.0.0.1`. Not accessible from your LAN.
 - **MCP uses stdio** — no network socket. Your IDE spawns the server as a child process.
-- **BYOK** — AI tools use your own Anthropic key. Not routed through any NirmiqLearn server.
+- **BYOK** — AI tools use your own Anthropic key. Not routed through any CodeSensei server.
 
 See [SECURITY.md](SECURITY.md) for the full threat model.
 
@@ -194,7 +196,7 @@ This is an MVP. Issues and PRs welcome. See [docs/TRD.md](docs/TRD.md) for archi
 
 Required Notice: Copyright © 2026 Siddharth Prashoo (https://github.com/SheeshDarth/NirmiqLearnOS)
 
-If NirmiqLearn OS helps you, please ⭐ star the repo and credit the project when you share or build on it.
+If CodeSensei helps you, please ⭐ star the repo and credit the project when you share or build on it.
 
 ---
 

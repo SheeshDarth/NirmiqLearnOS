@@ -1,8 +1,8 @@
-# Security Policy — NirmiqLearn OS
+# Security Policy — CodeSensei
 
 ## Threat Model
 
-NirmiqLearn OS is a **local-first, single-user, offline tool**.
+CodeSensei (formerly NirmiqLearn OS) is a **local-first, single-user, offline tool**.
 
 - It binds exclusively to `127.0.0.1` — not accessible from the LAN or internet.
 - It makes zero outbound network calls at runtime.

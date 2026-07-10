@@ -1,4 +1,4 @@
-# NirmiqLearn OS — Claude Code Context
+# CodeSensei (formerly NirmiqLearn OS) — Claude Code Context
 
 Local-first learning OS: students build with AI but must deeply understand what they built.
 Import a project (local path or GitHub URL) → auto-generated learning map, architecture
