@@ -490,6 +490,26 @@ Given 44 findings across two audits (many overlapping), what is the correct orde
 
 ---
 
+### REVIEW-010 — CodeSensei Program: Rename + Deep Senior-Review Engine + Obsidian-Grade Graph
+
+**Date:** 2026-07-10
+**Trigger:** User direction after reviewing the project knowledge report: imported (sensitive, local) project folders must be analyzed deeply and multi-discipline — "each time the project should behave as a senior software engineer" (architecture, frontend, backend, full-stack, security, QA); the learning map should be an Obsidian-like graph; and the product should be renamed to something meaningful.
+
+**Council Synthesis:**
+
+**Recommendation:** Three phases on one feature branch cut from `origin/master` (local master is stale). **Phase 1 — rename to CodeSensei, visible identity only**: UI strings, package name (+ `codesensei` bin alias), CLI banner, MCP `display_name`, export footer, doc headlines; a hard compat allowlist keeps `data/nirmiqlearn.db`, `NIRMIQ_PRO_KEY`, MCP server key `nirmiqlearn` / server id `nirmiqlearn-os`, all `nirmiq_*` tool names, and hook constants unchanged so no existing setup breaks. **Phase 2 — local-first Senior Review engine**: one new `senior-review.service.ts` computing eight lenses (security, testing/QA, code health, architecture, frontend, backend, dependencies, feasibility) from a `corpus` the existing `analyzeCode()` walk already produces — zero re-walk/re-parse, no new dependency, no network. Stored as `learning_maps.senior_review_json` (same blob lifecycle as `graphJson`). AI stays optional and privacy-preserving: `enrichReviewWithAI` sends only the computed findings JSON (masked snippets), never the codebase. **Phase 3 — Obsidian-grade graph**: hover-highlight + dim, search, interactive legend, click-to-focus, ego view, physics presets, file-node cap 44→120, and security/complexity node badges fed by Phase 2.
+
+**Risks:** security-regex false positives (mitigate: literal-value-only matching, test-path exclusion, dedupe, confidence field, mandatory snippet masking — tested); lens pass perf on 300-file repos (mitigate: corpus reuse, one combined sweep, ASTs not retained, <2 s budget verified by throwaway script); rename regressions (mitigate: `npm install` after package.json rename so `npm ci` in CI stays green, post-rename `git grep -in nirmiq` allowlist check); pre-upgrade workspaces without a review (mitigate: deep-review page renders a Refresh-Analysis CTA, never crashes on null).
+
+**What NOT to Build Yet:** `npm audit`/network dependency scanning (violates local-only); code-duplication detection (not cheap enough to be trustworthy — explicit v1 non-goal); deep rename of DB filename/env vars/MCP tool prefixes (breaking, deferred); graph clustering/community detection (ego view + filters cover the need).
+
+**Decision:**
+> Approve the three-phase CodeSensei program: visible-identity rename with compat allowlist; eight local senior-review lenses reusing the analyzeCode corpus with optional findings-only AI narrative; Obsidian-grade graph interactions with Phase-2 badges. Verification gate (lint → typecheck → build → test) after every phase.
+
+**Status:** 🔄 In progress on `feature/codesensei`.
+
+---
+
 ## Architecture Decisions Summary
 
 | ID | Decision | Outcome | Phase |
@@ -503,3 +523,4 @@ Given 44 findings across two audits (many overlapping), what is the correct orde
 | REVIEW-007 | Import-pipeline tests (#32) — node:test via tsx, zero new deps; no Vitest/Jest/CI | ✅ Implemented — 8/8 passing | Pre-1.0 |
 | REVIEW-008 | Whole-project review — polish sprint: GitHub-pull on refresh, blended progress formula (#26), conceptType form enum (#30); defer cohesion/search/graph | ✅ Implemented — 10/10 tests | Pre-1.0 |
 | REVIEW-009 | Landing strategy — preserve 15 commits (rebase-and-merge, no squash); skip paid AI smoke test; F2/F4/F5 cleanup as 3 free commits | ✅ Implemented — cleanup done | Pre-1.0 |
+| REVIEW-010 | CodeSensei program — visible-identity rename, 8-lens local senior-review engine (findings-only optional AI), Obsidian-grade graph | 🔄 In progress | v0.2 |
