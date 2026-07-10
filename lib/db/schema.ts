@@ -38,6 +38,8 @@ export const learningMaps = sqliteTable("learning_maps", {
   analysisRaw: text("analysis_raw"),
   // Architecture/workflow graph derived from real code (nodes + edges JSON)
   graphJson: text("graph_json"),
+  // Senior Review — multi-lens local static analysis (SeniorReview JSON)
+  seniorReviewJson: text("senior_review_json"),
   createdAt: integer("created_at")
     .notNull()
     .$defaultFn(() => Date.now()),

@@ -1,0 +1,1 @@
+ALTER TABLE `learning_maps` ADD `senior_review_json` text;
