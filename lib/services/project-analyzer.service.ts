@@ -28,6 +28,10 @@ import {
 import { createLearningMapWithContent } from "@/lib/services/learning-map.service";
 import { detectStack, generateLocalAnalysisText } from "@/lib/services/local-analyzer.service";
 import { analyzeCode } from "@/lib/services/code-analyzer.service";
+import {
+  computeSeniorReview,
+  enrichReviewWithAI,
+} from "@/lib/services/senior-review.service";
 import type { ServiceResult } from "@/lib/types";
 import { db } from "@/lib/db/client";
 import {
@@ -389,7 +393,8 @@ export async function analyzeProject(
     resolvedPath,
     projectName,
     analysisText,
-    structured
+    structured,
+    anthropicApiKey
   );
 
   return {
@@ -472,7 +477,8 @@ export async function reanalyzeProject(
     resolvedPath,
     projectName,
     computed.data.analysisText,
-    computed.data.structured
+    computed.data.structured,
+    anthropicApiKey
   );
 
   return {
@@ -604,7 +610,8 @@ async function persistAnalysis(
   resolvedPath: string,
   projectName: string,
   analysisText: string,
-  structured: ParsedAnalysis | null
+  structured: ParsedAnalysis | null,
+  anthropicApiKey?: string
 ): Promise<{ questionsCreated: number; conceptsCreated: number }> {
   let questionsCreated = 0;
   let conceptsCreated = 0;
@@ -662,6 +669,7 @@ async function persistAnalysis(
   // Read the real source code: extract code-grounded DSA findings + build the
   // architecture/workflow graph. Best-effort — never fail the import over this.
   let graphJson: string | undefined;
+  let seniorReviewJson: string | undefined;
   let analysisTruncated = false;
   let scannedFileCount = 0;
   try {
@@ -687,6 +695,30 @@ async function persistAnalysis(
       graphJson = JSON.stringify(code.graph);
     }
 
+    // Senior Review — eight local lenses over the already-collected corpus.
+    // Zero network by default; the optional AI narrative sends only the
+    // computed findings (secrets masked), never the source code.
+    const review = computeSeniorReview({
+      projectPath: resolvedPath,
+      projectTitle: projectName,
+      corpus: code.corpus,
+      importEdges: code.importEdges,
+      graph: code.graph,
+      stack: detectStack(resolvedPath, projectName),
+    });
+    if (review.ok) {
+      review.data.truncated = code.truncated;
+      if (anthropicApiKey) {
+        const narrative = await enrichReviewWithAI(
+          review.data,
+          anthropicApiKey,
+          projectName
+        );
+        if (narrative) review.data.aiNarrative = narrative;
+      }
+      seniorReviewJson = JSON.stringify(review.data);
+    }
+
     // BM25 search index — best-effort, never fail the import
     try {
       const { buildSearchIndex } = await import("@/lib/services/search.service");
@@ -703,7 +735,12 @@ async function persistAnalysis(
   const summary = analysisTruncated
     ? `${mapContent.summary ? mapContent.summary + "\n\n" : ""}⚠️ Large project — code analysis covered ${scannedFileCount} source files (ranked by importance); some files were not scanned.`
     : mapContent.summary;
-  await createLearningMapWithContent(workspaceId, { ...mapContent, summary, graphJson });
+  await createLearningMapWithContent(workspaceId, {
+    ...mapContent,
+    summary,
+    graphJson,
+    seniorReviewJson,
+  });
 
   return { questionsCreated, conceptsCreated };
 }
