@@ -159,6 +159,8 @@ export default function KnowledgeGraph({ data }: { data: KnowledgeGraphData }) {
       hasFlow: kinds.has("flow"),
       hasImports: kinds.has("imports"),
       hasCycle: kinds.has("cycle"),
+      hasSecurityBadge: data.nodes.some((n) => n.flags?.security),
+      hasComplexBadge: data.nodes.some((n) => n.flags?.complex),
     };
   }, [data]);
 
@@ -225,7 +227,12 @@ export default function KnowledgeGraph({ data }: { data: KnowledgeGraphData }) {
         .height(height)
         .backgroundColor("#0a0c10")
         .graphData(graphData)
-        .nodeLabel((n) => `${n.label} · ${TYPE_LABEL[n.type]}`)
+        .nodeLabel(
+          (n) =>
+            `${n.label} · ${TYPE_LABEL[n.type]}` +
+            (n.flags?.security ? " · ⚠ security finding" : "") +
+            (n.flags?.complex ? " · high complexity" : "")
+        )
         .nodeColor(nodeColorFn)
         .nodeVal((n) => n.val)
         .nodeRelSize(4)
@@ -256,10 +263,24 @@ export default function KnowledgeGraph({ data }: { data: KnowledgeGraphData }) {
         g.nodeColor(nodeColorFn).linkColor(linkColorFn);
       };
 
-      // 2D: always-label project + layers; label files/concepts only when zoomed in
+      // 2D: senior-review badge rings + labels (project/layer always; files when zoomed)
       if (mode === "2d") {
         g.nodeCanvasObjectMode(() => "after").nodeCanvasObject((n, ctx, scale) => {
           if (n.x === undefined || n.y === undefined) return;
+          if (n.flags) {
+            const rr = Math.sqrt(Math.max(n.val, 1)) * 4;
+            ctx.lineWidth = Math.max(1.5 / scale, 0.4);
+            ctx.beginPath();
+            ctx.arc(n.x, n.y, rr + 2, 0, 2 * Math.PI);
+            ctx.strokeStyle = n.flags.security ? "#f87171" : "#fbbf24";
+            ctx.stroke();
+            if (n.flags.security && n.flags.complex) {
+              ctx.beginPath();
+              ctx.arc(n.x, n.y, rr + 4, 0, 2 * Math.PI);
+              ctx.strokeStyle = "#fbbf24";
+              ctx.stroke();
+            }
+          }
           const important = n.type === "project" || n.type === "layer";
           if (!important && scale < 1.6) return;
           const fontSize = important ? Math.max(13 / scale, 2) : Math.max(10 / scale, 1.5);
@@ -536,6 +557,16 @@ export default function KnowledgeGraph({ data }: { data: KnowledgeGraphData }) {
         {legend.hasCycle && (
           <span className="flex items-center gap-1.5 text-xs text-amber-400/80">
             <span className="w-4 h-px bg-amber-400/70" /> circular import
+          </span>
+        )}
+        {legend.hasSecurityBadge && (
+          <span className="flex items-center gap-1.5 text-xs text-red-400/80">
+            <span className="w-2.5 h-2.5 rounded-full border border-red-400" /> security finding
+          </span>
+        )}
+        {legend.hasComplexBadge && (
+          <span className="flex items-center gap-1.5 text-xs text-amber-400/80">
+            <span className="w-2.5 h-2.5 rounded-full border border-amber-400" /> high complexity
           </span>
         )}
         <span className="text-xs text-zinc-700 ml-auto">

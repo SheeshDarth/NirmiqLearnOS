@@ -691,10 +691,6 @@ async function persistAnalysis(
       if (r.ok) conceptsCreated++;
     }
 
-    if (code.graph.nodes.length > 1) {
-      graphJson = JSON.stringify(code.graph);
-    }
-
     // Senior Review — eight local lenses over the already-collected corpus.
     // Zero network by default; the optional AI narrative sends only the
     // computed findings (secrets masked), never the source code.
@@ -717,6 +713,40 @@ async function persistAnalysis(
         if (narrative) review.data.aiNarrative = narrative;
       }
       seniorReviewJson = JSON.stringify(review.data);
+
+      // Badge the graph's file nodes with review findings BEFORE the graph is
+      // serialized: security ring (worst severity per file) + complexity ring.
+      const SEVERITY_RANK = { critical: 3, high: 2, medium: 1 } as const;
+      const secByFile = new Map<string, "critical" | "high" | "medium">();
+      for (const f of review.data.security.findings) {
+        if (!f.file || !(f.severity in SEVERITY_RANK)) continue;
+        const sev = f.severity as keyof typeof SEVERITY_RANK;
+        const prev = secByFile.get(f.file);
+        if (!prev || SEVERITY_RANK[sev] > SEVERITY_RANK[prev]) {
+          secByFile.set(f.file, sev);
+        }
+      }
+      const complexFiles = new Set(
+        review.data.codeHealth.complexFunctions
+          .filter((c) => c.complexity > 10)
+          .map((c) => c.file)
+      );
+      for (const n of code.graph.nodes) {
+        if (n.type !== "file") continue;
+        const rel = n.id.slice("file:".length);
+        const security = secByFile.get(rel);
+        const complex = complexFiles.has(rel);
+        if (security || complex) {
+          n.flags = {
+            ...(security ? { security } : {}),
+            ...(complex ? { complex: true } : {}),
+          };
+        }
+      }
+    }
+
+    if (code.graph.nodes.length > 1) {
+      graphJson = JSON.stringify(code.graph);
     }
 
     // BM25 search index — best-effort, never fail the import
