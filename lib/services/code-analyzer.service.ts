@@ -26,7 +26,7 @@ import type {
 // ── Bounds ───────────────────────────────────────────────────────────────────
 const MAX_FILES = 300;
 const MAX_FILE_BYTES = 80_000;
-const MAX_GRAPH_FILE_NODES = 44;
+const MAX_GRAPH_FILE_NODES = 120; // filters/ego view manage density (Obsidian-grade graph)
 const MAX_FINDINGS = 16;
 const MAX_AST_FILES = 100; // low-end safety cap: < 1 s parse time on 1.6 GHz
 

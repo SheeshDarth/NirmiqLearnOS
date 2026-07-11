@@ -20,6 +20,11 @@ export interface GraphNode {
   val: number; // relative size
   summary?: string; // shown when the node is clicked
   color?: string; // explicit color (e.g. by architecture layer)
+  /** Senior-review badges: drawn as colored rings around the node. */
+  flags?: {
+    security?: "critical" | "high" | "medium";
+    complex?: boolean;
+  };
 }
 
 export interface GraphLink {
