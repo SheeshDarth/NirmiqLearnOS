@@ -14,6 +14,7 @@ import {
   Bug,
   Download,
   Activity,
+  Shield,
 } from "lucide-react";
 import Link from "next/link";
 import { formatDate } from "@/lib/utils";
@@ -213,6 +214,24 @@ export default async function WorkspaceDetailPage({
             Map every feature to its underlying concept, and build a personal practice queue.
           </p>
           <span className="text-xs text-violet-400 font-medium">Open →</span>
+        </Link>
+
+        {/* Deep Review — senior-engineer report */}
+        <Link
+          href={`/workspaces/${ws.id}/deep-review`}
+          className="group bg-[#0d1117] border border-zinc-800 hover:border-zinc-700 rounded-lg p-5 transition-colors block"
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <Shield size={15} className="text-red-400" />
+            <h2 className="text-sm font-semibold text-zinc-100 group-hover:text-white">
+              Deep Review
+            </h2>
+          </div>
+          <p className="text-xs text-zinc-500 mb-3">
+            Senior-engineer report: security, testing, code health, architecture,
+            frontend, backend, dependencies, feasibility.
+          </p>
+          <span className="text-xs text-red-400 font-medium">Open →</span>
         </Link>
 
         {/* Session Log — vibe coding companion */}
