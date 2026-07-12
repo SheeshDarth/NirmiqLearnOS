@@ -325,7 +325,8 @@ const SECURITY_PATTERNS: SecurityPattern[] = [
       "eval executes arbitrary strings as code — a classic injection vector if any input reaches it.",
     recommendation: "Replace eval with JSON.parse, a lookup table, or explicit logic.",
     confidence: "medium",
-    re: /\beval\s*\(/,
+    // Require a non-empty argument so prose/titles like "eval()" don't match.
+    re: /\beval\s*\(\s*[^)\s]/,
     kind: "injection",
   },
   {
@@ -335,7 +336,7 @@ const SECURITY_PATTERNS: SecurityPattern[] = [
     detail: "Like eval, the Function constructor compiles strings into executable code.",
     recommendation: "Refactor to a static function or a safe interpreter.",
     confidence: "medium",
-    re: /\bnew Function\s*\(/,
+    re: /\bnew Function\s*\(\s*[^)\s]/,
     kind: "injection",
   },
   {
@@ -346,7 +347,8 @@ const SECURITY_PATTERNS: SecurityPattern[] = [
       "Raw HTML injection bypasses React's XSS protection. Unsanitized user data here = script injection.",
     recommendation: "Render text normally, or sanitize with a library like DOMPurify first.",
     confidence: "high",
-    re: /dangerouslySetInnerHTML/,
+    // Real usage is a prop/field assignment (={{…}} or : …), not a bare mention.
+    re: /dangerouslySetInnerHTML\s*[=:]/,
     kind: "injection",
   },
   {
