@@ -2,9 +2,9 @@
 
 > **Build with AI, but learn like a real engineer.**
 >
-> _Formerly NirmiqCodeSensei._
+> _Formerly NirmiqLearn OS._
 
-A local-first learning OS that sits inside your IDE and makes sure you actually understand the code you ship — not just that it works.
+A local-first learning OS that turns any project into deep understanding. Point it at a folder (or a GitHub URL) and it reads the real code and gives you a senior-engineer-grade breakdown — architecture, security, code health, the DSA hiding in your code, how it all fits together — plus an Obsidian-style map of the project and explain-back questions to prove you actually get it. **No cloud, no telemetry, 127.0.0.1 only** — your source never leaves your machine.
 
 ---
 
@@ -18,13 +18,14 @@ NirmiqCodeSensei fixes this without slowing you down.
 
 ## How it works
 
-NirmiqCodeSensei connects to your AI coding assistant (Claude Code, Cursor, Windsurf) via MCP. While you build, your assistant can automatically:
+**Import a project** (local path or GitHub URL) and NirmiqCodeSensei analyses the real source **entirely on your machine** — the offline analyzer is the default; an Anthropic key is optional and only ever enriches a narrative. From one import you get:
 
-- Log debug sessions with root cause and fix
-- Generate explain-back questions from your code *(Pro)*
-- Identify DSA/CS concepts hidden in what you built *(Pro)*
-- Analyse errors and produce structured debug breakdowns *(Pro)*
-- Track daily learning logs and surface weak spots over time
+- **Deep Review** — an eight-lens, senior-engineer report: security, testing/QA, code health (LOC + cyclomatic complexity), architecture (routes, import cycles, coupling), frontend, backend, dependencies, and feasibility — each graded A–F with file-and-line findings.
+- **Learning Map** — an Obsidian-style force graph of the architecture: hover to highlight a file's neighbourhood, search, filter by layer, focus a node, or view its local neighbourhood; files with security/complexity findings are badged.
+- **Code-grounded DSA** — the data structures & algorithms actually present in your code, each linked to the exact file, line, and a practice task.
+- **Explain-Back questions** — progressively harder questions that make you prove you understand what was built.
+
+It also **connects to your AI coding assistant** (Claude Code, Cursor, Windsurf) over MCP, so while you build your assistant can log debug sessions, add questions, and map concepts as you go.
 
 Everything is stored locally in SQLite. Nothing leaves your machine.
 
@@ -130,7 +131,7 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
 | `ncs_generate_questions` | Paste code → get 5 progressive explain-back questions (beginner to advanced) |
 | `ncs_suggest_concepts` | Paste code → get 3–5 underlying DSA/CS concepts with 30-min practice tasks |
 | `ncs_debug_assist` | Paste an error → get root cause, top 3 checks, fix, and prevention rule |
-| `ncs_analyze_project` | Analyze a local project → auto-populated workspace with questions, concepts, and learning map |
+| `ncs_analyze_project` | Analyze a local project → auto-populated workspace with the Deep Review, learning-map graph, code-grounded DSA, questions, and concepts |
 
 AI tools use your own Anthropic API key (BYOK). Add it to `.env.local`:
 
@@ -144,12 +145,13 @@ Then restart the MCP server. The 3 AI tools appear automatically.
 
 ## Features
 
-- **Workspaces** — one workspace per project. Log everything in one place.
+- **Deep Review** — eight-lens senior-engineer report (security, testing, code health, architecture, frontend, backend, dependencies, feasibility) computed locally from your real code, graded A–F with file:line findings.
+- **Learning Map** — Obsidian-style architecture graph with hover-highlight, search, layer filters, focus/local views, and 2D/3D — badged with the review's security & complexity findings.
+- **DSA Bridge** — the data structures & algorithms actually in your code, mapped to file, line, and a practice task.
 - **Explain-Back** — questions that force you to prove you understand, not just that it runs.
-- **DSA Bridge** — connects what you built to the CS concepts underneath it.
+- **Workspaces** — one workspace per project; log everything in one place.
 - **Debug Lab** — structured debug logs so you stop making the same mistakes twice.
 - **Daily Log** — what did you build today? what's still unclear? what next?
-- **Learning Map** — visual graph of concepts across all workspaces.
 - **Markdown Export** — export any workspace as a clean Markdown file.
 - **MCP Server** — 12 tools your AI assistant can call while you work.
 
@@ -175,12 +177,11 @@ Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 (hand-rolled components) 
 
 ## Roadmap
 
-- [ ] License key system for Pro tier
-- [ ] Team workspaces (shared SQLite over network drive)
-- [ ] Progress analytics dashboard
-- [ ] SQLite encryption at rest
-- [ ] VS Code sidebar panel (native extension)
-- [ ] Workspace templates (pre-filled question packs per domain)
+The road to a deployed 1.0 is tracked as focused megasprints in
+[docs/MEGASPRINT_ROADMAP.md](docs/MEGASPRINT_ROADMAP.md): identity ✅, security ✅,
+then architecture & data integrity, analysis depth, QA, framework/perf, and
+distribution (`npx nirmiqcodesensei` + versioned releases). Architecture
+decisions are logged in [docs/COUNCIL_REVIEW_LOG.md](docs/COUNCIL_REVIEW_LOG.md).
 
 ---
 
