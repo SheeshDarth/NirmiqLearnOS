@@ -19,3 +19,7 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npm test
+      # Supply-chain gate: fail the build on CRITICAL advisories in prod deps.
+      # High/moderate transitive advisories that can't be fixed until an
+      # upstream release (e.g. next's bundled postcss) are tracked in SECURITY.md.
+      - run: npm audit --omit=dev --audit-level=critical

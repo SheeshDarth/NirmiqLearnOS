@@ -196,6 +196,38 @@ test("computeSeniorReview: testing/deps/feasibility/frontend lens stats", () => 
   assert.match(r.overall.grade, /^[A-F]$/);
 });
 
+test("security lens: tightened detectors ignore prose, catch real usage", () => {
+  const mk = (rel: string, content: string) => ({
+    rel,
+    layer: "Lib / Utilities",
+    loc: content.split("\n").length,
+    bytes: Buffer.byteLength(content),
+    content,
+    isTsJs: true,
+    isClientComponent: false,
+  });
+  const corpus = [
+    mk("src/prose.ts", 'const note = "avoid eval() and dangerouslySetInnerHTML here";'),
+    mk("src/real.ts", "export function run(x: string) {\n  return eval(x);\n}"),
+  ];
+  const res = computeSeniorReview({
+    projectPath: projectDir,
+    projectTitle: "p",
+    corpus,
+    importEdges: [],
+    graph: { nodes: [], links: [] },
+    stack: detectStack(projectDir, "p"),
+  });
+  assert.ok(res.ok, res.ok ? "" : res.error);
+  if (!res.ok) return;
+  const hits = res.data.security.findings.map((f) => `${f.file}:${f.id}`);
+  assert.ok(hits.includes("src/real.ts:sec-eval"), "real eval(x) is flagged");
+  assert.ok(
+    !hits.some((h) => h.startsWith("src/prose.ts")),
+    `prose 'eval()'/'dangerouslySetInnerHTML' must not be flagged (got: ${hits.join(", ")})`
+  );
+});
+
 // ── analyzeProject end-to-end (local heuristic, temp DB) ─────────────────────
 let workspaceId: string;
 let seniorGeneratedAt = 0;
