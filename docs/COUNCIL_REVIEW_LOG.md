@@ -529,7 +529,7 @@ Given 44 findings across two audits (many overlapping), what is the correct orde
 **Decision:**
 > Approve the MS1–MS7 megasprint roadmap (`docs/MEGASPRINT_ROADMAP.md`); ship each deeply and independently, gated and council-logged, to a distributable **v1.0.0** as **NirmiqCodeSensei**.
 
-**Status:** 🔄 In progress. **MS1 ✅ complete** — full deep rename to NirmiqCodeSensei (display + package + DB file with boot migration + `NCS_*` env with fallback + `ncs_*` MCP tools); GitHub repo renamed `SheeshDarth/NirmiqCodeSensei`; gate green (lint/typecheck/build/test 16/16). Branch `feature/codesensei` unpushed pending user go-ahead. MS2 (security) next.
+**Status:** 🔄 In progress. **MS1 ✅ complete** — full deep rename to NirmiqCodeSensei (display + package + DB file with boot migration + `NCS_*` env with fallback + `ncs_*` MCP tools); GitHub repo renamed `SheeshDarth/NirmiqCodeSensei`; gate green (lint/typecheck/build/test 16/16). Branch `feature/codesensei` unpushed pending user go-ahead. **MS2 ✅ complete** — analysis-pipeline hardening (symlink-confined walk, shell-free `execFileSync` git, realpath + credential-dir path blocks, prod CSP without `unsafe-eval`), detector precision fix (self-scan security lens **A/100**, was C/70), `npm audit --audit-level=critical` CI gate, SECURITY.md threat model refresh (SEC-008..011); gate green (17/17). MS3 (architecture & data integrity) next.
 
 ---
 
