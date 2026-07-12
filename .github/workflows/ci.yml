@@ -14,7 +14,10 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      # npm install (not ci) so the Linux runner resolves its own platform-
+      # specific optional deps (e.g. @tailwindcss/oxide native/wasm variants),
+      # which a Windows-generated lockfile can't fully pin cross-platform.
+      - run: npm install --no-audit --no-fund
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
