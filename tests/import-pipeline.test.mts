@@ -30,7 +30,7 @@ const { eq } = await import("drizzle-orm");
 const { resolveProjectPath, analyzeProject, reanalyzeProject, IMPORTED_PROJECTS_DIR } =
   await import("@/lib/services/project-analyzer.service");
 const { analyzeCode } = await import("@/lib/services/code-analyzer.service");
-const { computeSeniorReview } = await import("@/lib/services/senior-review.service");
+const { computeSeniorReview, computeCodeHealthScore } = await import("@/lib/services/senior-review.service");
 const { detectStack } = await import("@/lib/services/local-analyzer.service");
 const { deleteWorkspace } = await import("@/lib/services/workspace.service");
 const { createDebugLog } = await import("@/lib/services/debug-log.service");
@@ -231,6 +231,52 @@ test("security lens: tightened detectors ignore prose, catch real usage", () => 
 // ── analyzeProject end-to-end (local heuristic, temp DB) ─────────────────────
 let workspaceId: string;
 let seniorGeneratedAt = 0;
+
+test("codeHealth scoring is size-relative, not count-based (MS4 calibration)", () => {
+  // Healthy large project: 6 complex functions out of 400 (1.5%) → strong grade.
+  const large = computeCodeHealthScore({
+    totalFunctions: 400,
+    highComplexCount: 1,
+    medComplexCount: 5,
+    oversizeFileCount: 2,
+    totalFiles: 120,
+  });
+  assert.equal(large.grade, "A", `large healthy repo should be A, got ${large.grade} (${large.score})`);
+
+  // SAME absolute complex-function count in a tiny project (6 of 15 = 40%) must
+  // grade much worse — this is the calibration: density, not raw count.
+  const small = computeCodeHealthScore({
+    totalFunctions: 15,
+    highComplexCount: 1,
+    medComplexCount: 5,
+    oversizeFileCount: 0,
+    totalFiles: 5,
+  });
+  assert.ok(
+    small.score < large.score - 20,
+    `same complex count but denser must score much lower (large ${large.score}, small ${small.score})`
+  );
+
+  // Genuinely unhealthy: many high-complexity functions + oversized files → F.
+  const unhealthy = computeCodeHealthScore({
+    totalFunctions: 30,
+    highComplexCount: 8,
+    medComplexCount: 10,
+    oversizeFileCount: 3,
+    totalFiles: 6,
+  });
+  assert.equal(unhealthy.grade, "F", `dense high-complexity repo should be F, got ${unhealthy.grade} (${unhealthy.score})`);
+
+  // Empty project must not divide by zero.
+  const empty = computeCodeHealthScore({
+    totalFunctions: 0,
+    highComplexCount: 0,
+    medComplexCount: 0,
+    oversizeFileCount: 0,
+    totalFiles: 0,
+  });
+  assert.equal(empty.score, 100);
+});
 
 test("analyzeProject: local-heuristic import populates the workspace", async () => {
   const res = await analyzeProject({ projectPath: projectDir });

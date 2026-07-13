@@ -193,13 +193,45 @@ const SEVERITY_PENALTY: Record<LensSeverity, number> = {
   info: 0,
 };
 
+function gradeForScore(score: number): LensScore["grade"] {
+  return score >= 90 ? "A" : score >= 75 ? "B" : score >= 60 ? "C" : score >= 40 ? "D" : "F";
+}
+
 function scoreLens(findings: LensFinding[], summary: string): LensScore {
   let score = 100;
   for (const f of findings) score -= SEVERITY_PENALTY[f.severity];
   score = Math.max(0, Math.round(score));
-  const grade =
-    score >= 90 ? "A" : score >= 75 ? "B" : score >= 60 ? "C" : score >= 40 ? "D" : "F";
-  return { score, grade, summary };
+  return { score, grade: gradeForScore(score), summary };
+}
+
+/**
+ * Calibrated, size-relative code-health score (MS4).
+ *
+ * The default per-finding penalty model punishes large codebases for merely
+ * having more code: eight complex functions score identically whether the
+ * project has 50 functions (genuinely unhealthy) or 5,000 (fine). Grade instead
+ * on the SHARE of the codebase that is unhealthy — a very-complex function
+ * (cyclomatic > 20) weighs double a merely-complex one (> 10) — so the score
+ * reflects code health, not project size. A healthy codebase keeps well under
+ * ~5% of its functions above complexity 10.
+ */
+export function computeCodeHealthScore(m: {
+  totalFunctions: number;
+  highComplexCount: number; // complexity > 20
+  medComplexCount: number; // 10 < complexity <= 20
+  oversizeFileCount: number; // loc > 500
+  totalFiles: number;
+}): { score: number; grade: LensScore["grade"] } {
+  const weightedComplexShare =
+    m.totalFunctions > 0
+      ? (m.highComplexCount * 2 + m.medComplexCount) / m.totalFunctions
+      : 0;
+  const oversizeShare =
+    m.totalFiles > 0 ? m.oversizeFileCount / m.totalFiles : 0;
+  const complexPenalty = Math.min(45, Math.round(weightedComplexShare * 120));
+  const sizePenalty = Math.min(20, Math.round(oversizeShare * 60));
+  const score = Math.max(0, 100 - complexPenalty - sizePenalty);
+  return { score, grade: gradeForScore(score) };
 }
 
 function cap(findings: LensFinding[]): LensFinding[] {
@@ -691,9 +723,31 @@ function runCodeHealthLens(input: SeniorReviewInput): CodeHealthLens {
   }
 
   const capped = cap(findings);
-  const summary = `${totalLoc.toLocaleString()} LOC across ${input.corpus.length} files (avg ${avgLoc}).`;
+
+  // Size-relative scoring: grade on the share of the codebase that is unhealthy,
+  // not the raw count of findings (which just grows with project size).
+  const highComplexCount = allFns.filter((fn) => fn.complexity > 20).length;
+  const medComplexCount = allFns.filter(
+    (fn) => fn.complexity > 10 && fn.complexity <= 20
+  ).length;
+  const oversizeFileCount = input.corpus.filter((f) => f.loc > 500).length;
+  const { score, grade } = computeCodeHealthScore({
+    totalFunctions: allFns.length,
+    highComplexCount,
+    medComplexCount,
+    oversizeFileCount,
+    totalFiles: input.corpus.length,
+  });
+
+  const complexCount = highComplexCount + medComplexCount;
+  const pctComplex =
+    allFns.length > 0 ? Math.round((complexCount / allFns.length) * 100) : 0;
+  const summary =
+    `${totalLoc.toLocaleString()} LOC across ${input.corpus.length} files (avg ${avgLoc}). ` +
+    `${complexCount}/${allFns.length} functions above complexity 10 (${pctComplex}%).`;
+
   return {
-    score: scoreLens(capped, summary),
+    score: { score, grade, summary },
     findings: capped,
     totalLoc,
     avgLoc,
