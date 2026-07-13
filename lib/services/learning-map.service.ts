@@ -96,6 +96,7 @@ export async function createLearningMapWithContent(
     analysisRaw?: string;
     graphJson?: string;
     seniorReviewJson?: string;
+    sourceFingerprint?: string;
     modules: Array<{
       title: string;
       summary: string;
@@ -136,6 +137,7 @@ export async function createLearningMapWithContent(
         analysisRaw: content.analysisRaw ?? null,
         graphJson: content.graphJson ?? null,
         seniorReviewJson: content.seniorReviewJson ?? null,
+        sourceFingerprint: content.sourceFingerprint ?? null,
         modulesJson,
         checkpointsJson,
       })

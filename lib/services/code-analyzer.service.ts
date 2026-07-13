@@ -14,6 +14,7 @@
  */
 
 import { readdirSync, readFileSync, statSync } from "fs";
+import { createHash } from "crypto";
 import path from "path";
 import { parse } from "@typescript-eslint/typescript-estree";
 import type { TSESTree } from "@typescript-eslint/typescript-estree";
@@ -126,6 +127,61 @@ function walk(
       } catch { /* skip */ }
     }
   }
+}
+
+/**
+ * Fast, content-independent fingerprint of a project's source tree, used to
+ * skip re-analysis when nothing changed (MS4 incremental re-analysis). Mirrors
+ * the analyzeCode() walk (same ignore dirs, extensions, symlink skip, size cap)
+ * but only *stats* files — no reads, no AST parsing — so it is far cheaper than
+ * a full analysis. Two trees with identical relative paths + sizes + mtimes
+ * hash to the same value; any add/remove/edit (which changes size or mtime)
+ * changes it. Returns a hex sha256, or null if the root can't be read.
+ *
+ * Trade-off: this is an mtime+size heuristic, not a content hash — an edit that
+ * preserves both (rare) would be missed. That is the standard build-cache
+ * tradeoff, chosen so the check stays cheap enough to run on every refresh.
+ */
+export function computeSourceFingerprint(root: string): string | null {
+  const parts: string[] = [];
+  const visit = (dir: string): void => {
+    if (parts.length >= MAX_FILES) return;
+    const entries = (() => {
+      try {
+        return readdirSync(dir, { withFileTypes: true });
+      } catch {
+        return null;
+      }
+    })();
+    if (!entries) return;
+    for (const e of entries) {
+      if (parts.length >= MAX_FILES) return;
+      if (e.name.startsWith(".") && e.name !== ".") continue;
+      if (e.isSymbolicLink()) continue;
+      if (e.isDirectory()) {
+        if (IGNORE_DIRS.has(e.name)) continue;
+        visit(path.join(dir, e.name));
+      } else if (CODE_EXT.test(e.name)) {
+        const full = path.join(dir, e.name);
+        try {
+          const st = statSync(full);
+          if (st.size <= MAX_FILE_BYTES) {
+            const rel = path.relative(root, full).split(path.sep).join("/");
+            parts.push(`${rel}|${st.size}|${Math.round(st.mtimeMs)}`);
+          }
+        } catch {
+          /* skip unreadable entries */
+        }
+      }
+    }
+  };
+  try {
+    visit(root);
+  } catch {
+    return null;
+  }
+  parts.sort();
+  return createHash("sha256").update(parts.join("\n")).digest("hex");
 }
 
 // ── Layer classification ─────────────────────────────────────────────────────

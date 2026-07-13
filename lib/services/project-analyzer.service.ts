@@ -26,9 +26,12 @@ import {
   createConceptLink,
   createConceptLinkWithSource,
 } from "@/lib/services/concept-link.service";
-import { createLearningMapWithContent } from "@/lib/services/learning-map.service";
+import {
+  createLearningMapWithContent,
+  getLearningMapByWorkspaceId,
+} from "@/lib/services/learning-map.service";
 import { detectStack, generateLocalAnalysisText } from "@/lib/services/local-analyzer.service";
-import { analyzeCode } from "@/lib/services/code-analyzer.service";
+import { analyzeCode, computeSourceFingerprint } from "@/lib/services/code-analyzer.service";
 import {
   computeSeniorReview,
   enrichReviewWithAI,
@@ -111,6 +114,8 @@ export interface AnalysisResult {
   analysis: string;
   questionsCreated: number;
   conceptsCreated: number;
+  /** True when reanalyze short-circuited because the source was unchanged (MS4). */
+  unchanged?: boolean;
 }
 
 // Structured-output schema for AI analysis. Passed to messages.parse() via
@@ -496,6 +501,31 @@ export async function reanalyzeProject(
 
   const projectName = ws.data.title;
 
+  // MS4 incremental re-analysis — if the source tree is unchanged since the last
+  // run (same fingerprint), skip the whole expensive pass and keep the existing
+  // artifacts. Near-instant on an unchanged repo; a genuine edit (which changes
+  // a file's size or mtime) flips the fingerprint and forces a full refresh.
+  const currentFingerprint = computeSourceFingerprint(resolvedPath);
+  const existingMap = await getLearningMapByWorkspaceId(workspaceId);
+  if (
+    existingMap.ok &&
+    existingMap.data?.sourceFingerprint &&
+    currentFingerprint &&
+    existingMap.data.sourceFingerprint === currentFingerprint
+  ) {
+    return {
+      ok: true,
+      data: {
+        workspaceId,
+        workspaceName: projectName,
+        analysis: existingMap.data.analysisRaw ?? "",
+        questionsCreated: 0,
+        conceptsCreated: 0,
+        unchanged: true,
+      },
+    };
+  }
+
   // Compute fresh analysis BEFORE deleting anything, so a failed re-analysis
   // never wipes the existing content.
   const computed = await computeAnalysis(resolvedPath, projectName, anthropicApiKey);
@@ -796,11 +826,15 @@ async function persistAnalysis(
   const summary = analysisTruncated
     ? `${mapContent.summary ? mapContent.summary + "\n\n" : ""}⚠️ Large project — code analysis covered ${scannedFileCount} source files (ranked by importance); some files were not scanned.`
     : mapContent.summary;
+  // Fingerprint the source tree so a later reanalyze can skip work when nothing
+  // changed (MS4 incremental re-analysis).
+  const sourceFingerprint = computeSourceFingerprint(resolvedPath) ?? undefined;
   await createLearningMapWithContent(workspaceId, {
     ...mapContent,
     summary,
     graphJson,
     seniorReviewJson,
+    sourceFingerprint,
   });
 
   return { questionsCreated, conceptsCreated };

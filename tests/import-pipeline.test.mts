@@ -14,7 +14,7 @@
  */
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, writeFileSync, rmSync } from "fs";
+import { mkdirSync, mkdtempSync, writeFileSync, appendFileSync, rmSync } from "fs";
 import path from "path";
 import os from "os";
 
@@ -373,9 +373,17 @@ test("reanalyzeProject: replaces analysis artifacts, keeps user data", async () 
   const seeded = await createDebugLog(workspaceId, { title: "KEEP: my bug note" });
   assert.ok(seeded.ok);
 
+  // MS4 incremental: reanalyze short-circuits on an unchanged tree, so change a
+  // source file to represent the real "code changed → refresh" scenario.
+  appendFileSync(
+    path.join(projectDir, "src", "index.ts"),
+    "\nexport const _touch = 1;\n"
+  );
+
   const res = await reanalyzeProject(workspaceId);
   assert.ok(res.ok, res.ok ? "" : res.error);
   if (!res.ok) return;
+  assert.ok(!res.data.unchanged, "changed tree triggers a full re-analysis");
   assert.ok(res.data.questionsCreated > 0, "fresh questions persisted");
 
   const bugs = await db.select().from(schema.debugLogs)
@@ -396,6 +404,24 @@ test("reanalyzeProject: regenerates the senior review", async () => {
     review.generatedAt > seniorGeneratedAt,
     `regenerated (was ${seniorGeneratedAt}, now ${review.generatedAt})`
   );
+});
+
+test("reanalyzeProject: unchanged source short-circuits (MS4 incremental)", async () => {
+  // The prior test re-analysed and stored a fresh fingerprint; the tree hasn't
+  // changed since, so a second reanalyze must skip the work and report unchanged.
+  const before = await db.select().from(schema.explainBackQuestions)
+    .where(eq(schema.explainBackQuestions.workspaceId, workspaceId));
+
+  const res = await reanalyzeProject(workspaceId);
+  assert.ok(res.ok, res.ok ? "" : res.error);
+  if (!res.ok) return;
+  assert.equal(res.data.unchanged, true, "unchanged tree skips re-analysis");
+  assert.equal(res.data.questionsCreated, 0, "no new artifacts created");
+
+  // Existing artifacts are left intact (not cleared+regenerated).
+  const after = await db.select().from(schema.explainBackQuestions)
+    .where(eq(schema.explainBackQuestions.workspaceId, workspaceId));
+  assert.equal(after.length, before.length, "questions untouched on short-circuit");
 });
 
 test("reanalyzeProject: legacy workspaces (null sourcePath) fall back to the description marker", async () => {

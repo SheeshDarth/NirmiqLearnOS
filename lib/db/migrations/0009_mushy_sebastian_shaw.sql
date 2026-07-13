@@ -1,0 +1,1 @@
+ALTER TABLE `learning_maps` ADD `source_fingerprint` text;
