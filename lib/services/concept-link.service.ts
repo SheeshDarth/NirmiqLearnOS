@@ -27,6 +27,7 @@ export async function createConceptLink(
         conceptType: input.conceptType ?? null,
         explanation: input.explanation ?? null,
         practiceTask: input.practiceTask ?? null,
+        moduleKey: input.moduleKey ?? null,
       })
       .returning();
     return { ok: true, data: link };
@@ -51,6 +52,7 @@ export async function createConceptLinkWithSource(
     sourceFile?: string;
     codeSnippet?: string;
     astConfidence?: string;
+    moduleKey?: string;
   }
 ): Promise<ServiceResult<ConceptLink>> {
   try {
@@ -66,6 +68,7 @@ export async function createConceptLinkWithSource(
         sourceFile: input.sourceFile ?? null,
         codeSnippet: input.codeSnippet ?? null,
         astConfidence: input.astConfidence ?? null,
+        moduleKey: input.moduleKey ?? null,
       })
       .returning();
     return { ok: true, data: link };

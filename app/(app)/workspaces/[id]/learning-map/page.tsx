@@ -1,6 +1,7 @@
 import { getLearningMapByWorkspaceId } from "@/lib/services/learning-map.service";
 import { getWorkspaceById } from "@/lib/services/workspace.service";
 import { getConceptLinksByWorkspaceId } from "@/lib/services/concept-link.service";
+import { getQuestionsByWorkspaceId } from "@/lib/services/explain-back.service";
 import { buildKnowledgeGraph, type KnowledgeGraphData } from "@/lib/services/knowledge-graph.service";
 import { notFound } from "next/navigation";
 import { ArrowLeft, CheckSquare, Square, Sparkles, FileText } from "lucide-react";
@@ -33,10 +34,11 @@ export default async function LearningMapPage({
   const { id: workspaceId } = await params;
   const { q } = await searchParams;
 
-  const [wsResult, mapResult, clResult, indexed] = await Promise.all([
+  const [wsResult, mapResult, clResult, qResult, indexed] = await Promise.all([
     getWorkspaceById(workspaceId),
     getLearningMapByWorkspaceId(workspaceId),
     getConceptLinksByWorkspaceId(workspaceId),
+    getQuestionsByWorkspaceId(workspaceId),
     hasSearchIndex(workspaceId),
   ]);
 
@@ -50,6 +52,19 @@ export default async function LearningMapPage({
   const workspace = wsResult.data;
   const map = mapResult.ok ? mapResult.data : null;
   const conceptLinks = clResult.ok ? clResult.data : [];
+  const questions = qResult.ok ? qResult.data : [];
+
+  // Per-module related counts (#27/#28) — group the flat question/concept lists
+  // by moduleKey so each module card shows what belongs to it.
+  const relatedByModule = new Map<string, { questions: number; concepts: number }>();
+  const bump = (key: string | null, kind: "questions" | "concepts") => {
+    if (!key) return;
+    const cur = relatedByModule.get(key) ?? { questions: 0, concepts: 0 };
+    cur[kind]++;
+    relatedByModule.set(key, cur);
+  };
+  for (const q of questions) bump(q.moduleKey, "questions");
+  for (const cl of conceptLinks) bump(cl.moduleKey, "concepts");
 
   const completedCheckpoints = map?.checkpoints.filter((c) => c.completed).length ?? 0;
   const totalCheckpoints = map?.checkpoints.length ?? 0;
@@ -261,6 +276,7 @@ export default async function LearningMapPage({
                   module={mod}
                   mapId={map.id}
                   workspaceId={workspaceId}
+                  related={relatedByModule.get(mod.key)}
                 />
               ))}
             </div>

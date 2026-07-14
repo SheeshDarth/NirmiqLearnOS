@@ -29,6 +29,7 @@ import {
 import {
   createLearningMapWithContent,
   getLearningMapByWorkspaceId,
+  MODULE_KEYS,
 } from "@/lib/services/learning-map.service";
 import { detectStack, generateLocalAnalysisText } from "@/lib/services/local-analyzer.service";
 import { analyzeCode, computeSourceFingerprint } from "@/lib/services/code-analyzer.service";
@@ -242,6 +243,21 @@ export function cloneOrPullRepo(githubUrl: string, destPath: string): void {
       stdio: "pipe",
     });
   }
+}
+
+// Classify an explain-back question into one of the four learning-map modules
+// (#27/#28) so the flat question list groups under modules. Deterministic keyword
+// heuristic — works on both the AI and the offline-heuristic paths. Defaults to
+// "how-it-works" (the main conceptual bucket).
+function inferQuestionModuleKey(text: string): string {
+  const t = text.toLowerCase();
+  if (/\b(break|fail|crash|error|bug|risk|edge case|go wrong|vulnerab|secur|scale)\b/.test(t))
+    return MODULE_KEYS.riskMap;
+  if (/\b(file|folder|directory|structure|entry point|where is|which file|organi[sz])\b/.test(t))
+    return MODULE_KEYS.keyFiles;
+  if (/\b(stack|dependenc|library|framework|package|version|install|tooling|why .* chosen)\b/.test(t))
+    return MODULE_KEYS.techStack;
+  return MODULE_KEYS.howItWorks;
 }
 
 // ── Analysis section parsing ───────────────────────────────────────────────────
@@ -683,6 +699,7 @@ async function persistAnalysis(
       const r = await createQuestion(workspaceId, {
         question: q.question,
         difficulty: q.difficulty,
+        moduleKey: inferQuestionModuleKey(q.question),
       });
       if (r.ok) questionsCreated++;
     }
@@ -692,6 +709,7 @@ async function persistAnalysis(
         conceptName: c.name,
         conceptType: c.type,
         explanation: c.explanation,
+        moduleKey: MODULE_KEYS.howItWorks,
       });
       if (r.ok) conceptsCreated++;
     }
@@ -709,6 +727,7 @@ async function persistAnalysis(
       const r = await createQuestion(workspaceId, {
         question: qMatch[3].trim(),
         difficulty,
+        moduleKey: inferQuestionModuleKey(qMatch[3].trim()),
       });
       if (r.ok) questionsCreated++;
     }
@@ -722,6 +741,7 @@ async function persistAnalysis(
         conceptName: cMatch[1].trim(),
         conceptType: cMatch[2].trim(),
         explanation: cMatch[3].trim(),
+        moduleKey: MODULE_KEYS.howItWorks,
       });
       if (r.ok) conceptsCreated++;
     }
@@ -748,6 +768,7 @@ async function persistAnalysis(
         sourceFile: `${f.file}:${f.line}`,
         codeSnippet: f.snippet,
         astConfidence: f.confidence,
+        moduleKey: MODULE_KEYS.keyFiles,
       });
       if (r.ok) conceptsCreated++;
     }

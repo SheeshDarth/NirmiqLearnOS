@@ -13,6 +13,9 @@ export const createQuestionSchema = z.object({
     .max(2000)
     .optional(), // free-text, stored as JSON string
   learningMapId: z.string().optional(),
+  // Set internally by the analyzer (never the manual form): the module slug this
+  // question belongs to, for cross-surface grouping (#27/#28).
+  moduleKey: z.string().max(60).optional(),
 });
 
 export type CreateQuestionInput = z.infer<typeof createQuestionSchema>;

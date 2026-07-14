@@ -3,7 +3,8 @@ import {
   deleteModuleAction,
 } from "@/app/(app)/workspaces/[id]/learning-map/actions";
 import type { LearningModule } from "@/lib/services/learning-map.service";
-import { Trash2 } from "lucide-react";
+import Link from "next/link";
+import { Trash2, HelpCircle, Lightbulb } from "lucide-react";
 
 const DIFFICULTY_COLOR = {
   beginner: "text-emerald-400 bg-emerald-500/10",
@@ -21,12 +22,15 @@ interface ModuleCardProps {
   module: LearningModule;
   mapId: string;
   workspaceId: string;
+  /** Cross-surface counts (#27/#28): questions + concepts tagged to this module. */
+  related?: { questions: number; concepts: number };
 }
 
 export default function ModuleCard({
   module,
   mapId,
   workspaceId,
+  related,
 }: ModuleCardProps) {
   return (
     <div className="bg-[#0d1117] border border-zinc-800 rounded-lg p-4 space-y-3">
@@ -88,6 +92,30 @@ export default function ModuleCard({
               {f}
             </span>
           ))}
+        </div>
+      )}
+
+      {/* Related surfaces (#27/#28) — this module's questions + concepts */}
+      {related && (related.questions > 0 || related.concepts > 0) && (
+        <div className="flex flex-wrap items-center gap-3 text-xs">
+          {related.questions > 0 && (
+            <Link
+              href={`/workspaces/${workspaceId}/explain-back`}
+              className="inline-flex items-center gap-1 text-cyan-500 hover:text-cyan-300 transition-colors"
+            >
+              <HelpCircle size={12} />
+              {related.questions} question{related.questions === 1 ? "" : "s"}
+            </Link>
+          )}
+          {related.concepts > 0 && (
+            <Link
+              href={`/workspaces/${workspaceId}/dsa-bridge`}
+              className="inline-flex items-center gap-1 text-violet-400 hover:text-violet-300 transition-colors"
+            >
+              <Lightbulb size={12} />
+              {related.concepts} concept{related.concepts === 1 ? "" : "s"}
+            </Link>
+          )}
         </div>
       )}
 
