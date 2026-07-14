@@ -67,6 +67,10 @@ export const explainBackQuestions = sqliteTable("explain_back_questions", {
   learningMapId: text("learning_map_id").references(() => learningMaps.id, {
     onDelete: "set null",
   }),
+  // Soft link to the learning-map module this question belongs to (module key
+  // slug, e.g. "risk-map"). Groups the flat question list under modules so the
+  // surfaces are one system (#27/#28). Null for manually-added questions.
+  moduleKey: text("module_key"),
   question: text("question").notNull(),
   difficulty: text("difficulty", {
     enum: ["beginner", "intermediate", "advanced"],
@@ -186,6 +190,9 @@ export const conceptLinks = sqliteTable("concept_links", {
   projectFeature: text("project_feature").notNull(),
   conceptName: text("concept_name").notNull(),
   conceptType: text("concept_type"),
+  // Soft link to the learning-map module this concept belongs to (#27/#28).
+  // Code-grounded DSA findings → "key-files"; conceptual links → "how-it-works".
+  moduleKey: text("module_key"),
   explanation: text("explanation"),
   practiceTask: text("practice_task"),
   // Code-grounded DSA: where the structure/algorithm was found

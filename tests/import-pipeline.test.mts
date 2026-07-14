@@ -330,6 +330,29 @@ test("analyzeProject: graph file nodes carry senior-review flags", async () => {
   assert.ok(flagged.flags?.security, "insecure.ts badged with a security flag");
 });
 
+test("analyzeProject: tags questions + concepts with a module key (#27/#28)", async () => {
+  const validKeys = new Set(["tech-stack", "how-it-works", "key-files", "risk-map"]);
+
+  const qs = await db.select().from(schema.explainBackQuestions)
+    .where(eq(schema.explainBackQuestions.workspaceId, workspaceId));
+  assert.ok(qs.length > 0, "questions exist");
+  assert.ok(qs.every((q) => q.moduleKey && validKeys.has(q.moduleKey)),
+    "every question is tagged with a valid module key");
+
+  const links = await db.select().from(schema.conceptLinks)
+    .where(eq(schema.conceptLinks.workspaceId, workspaceId));
+  const grounded = links.filter((l) => l.sourceFile);
+  assert.ok(grounded.length > 0, "fixture yields code-grounded concepts");
+  assert.ok(grounded.every((l) => l.moduleKey === "key-files"),
+    "code-grounded concepts group under key-files");
+
+  const [map] = await db.select().from(schema.learningMaps)
+    .where(eq(schema.learningMaps.workspaceId, workspaceId));
+  const modules = JSON.parse(map.modulesJson) as Array<{ key?: string }>;
+  assert.ok(modules.length > 0 && modules.every((m) => m.key),
+    "every learning-map module carries a stable key");
+});
+
 test("graph-utils: neighborhood depths and search matching", async () => {
   const { buildAdjacency, neighborhood, matchNodes, endpointId } = await import(
     "@/components/learning-map/graph-utils"

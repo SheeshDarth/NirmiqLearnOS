@@ -31,6 +31,7 @@ export async function createQuestion(
       .values({
         workspaceId,
         learningMapId: input.learningMapId ?? null,
+        moduleKey: input.moduleKey ?? null,
         question: input.question,
         difficulty: input.difficulty,
         expectedPointsJson,

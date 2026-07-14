@@ -12,6 +12,8 @@ import type {
 
 export type LearningModule = {
   id: string;
+  /** Stable slug for cross-surface grouping (#27/#28), e.g. "risk-map". */
+  key: string;
   title: string;
   summary: string;
   difficulty: "beginner" | "intermediate" | "advanced";
@@ -19,6 +21,24 @@ export type LearningModule = {
   files: string[];
   confidence: "red" | "yellow" | "green" | null;
 };
+
+/** Stable module slugs — questions/concepts reference these to group by module. */
+export const MODULE_KEYS = {
+  techStack: "tech-stack",
+  howItWorks: "how-it-works",
+  keyFiles: "key-files",
+  riskMap: "risk-map",
+} as const;
+
+/** Map a module title to its stable slug, so old maps (whose JSON predates the
+ *  `key` field) still group correctly and new modules get a consistent key. */
+export function moduleKeyForTitle(title: string): string {
+  if (title.startsWith("Tech Stack")) return MODULE_KEYS.techStack;
+  if (title.startsWith("How It Works")) return MODULE_KEYS.howItWorks;
+  if (title.startsWith("Key Files")) return MODULE_KEYS.keyFiles;
+  if (title.startsWith("Risk Map")) return MODULE_KEYS.riskMap;
+  return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
 
 export type Checkpoint = {
   id: string;
@@ -40,7 +60,9 @@ export type LearningMap = Omit<
 
 function parseModules(json: string): LearningModule[] {
   try {
-    return JSON.parse(json) as LearningModule[];
+    const mods = JSON.parse(json) as LearningModule[];
+    // Backfill `key` for maps whose JSON predates #27/#28 so grouping still works.
+    return mods.map((m) => ({ ...m, key: m.key ?? moduleKeyForTitle(m.title) }));
   } catch {
     return [];
   }
@@ -98,6 +120,7 @@ export async function createLearningMapWithContent(
     seniorReviewJson?: string;
     sourceFingerprint?: string;
     modules: Array<{
+      key?: string;
       title: string;
       summary: string;
       difficulty: "beginner" | "intermediate" | "advanced";
@@ -111,6 +134,7 @@ export async function createLearningMapWithContent(
     const modulesJson = JSON.stringify(
       content.modules.map((m) => ({
         id: crypto.randomUUID(),
+        key: m.key ?? moduleKeyForTitle(m.title),
         title: m.title,
         summary: m.summary,
         difficulty: m.difficulty,
@@ -203,6 +227,7 @@ export async function addModule(
     const modules = parseModules(raw.modulesJson);
     const newModule: LearningModule = {
       id: crypto.randomUUID(),
+      key: moduleKeyForTitle(input.title),
       title: input.title,
       summary: input.summary ?? "",
       difficulty: input.difficulty,

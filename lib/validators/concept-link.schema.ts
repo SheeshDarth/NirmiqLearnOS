@@ -42,6 +42,9 @@ export const createConceptLinkSchema = z.object({
   conceptType: z.enum(CONCEPT_TYPES).optional(),
   explanation: z.string().max(2000).optional(),
   practiceTask: z.string().max(500).optional(),
+  // Set internally by the analyzer (never the manual form): the module slug this
+  // concept belongs to, for cross-surface grouping (#27/#28).
+  moduleKey: z.string().max(60).optional(),
 });
 
 export type CreateConceptLinkInput = z.infer<typeof createConceptLinkSchema>;
