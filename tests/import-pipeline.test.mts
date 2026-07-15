@@ -520,6 +520,54 @@ test("createConceptLinkSchema: conceptType enum-enforced on the form path", asyn
   );
 });
 
+// ── BM25 search ranking (MS5 coverage) ───────────────────────────────────────
+test("search: BM25 indexes, ranks by relevance, and rebuilds cleanly", async () => {
+  const { createWorkspace } = await import("@/lib/services/workspace.service");
+  const { buildSearchIndex, searchWorkspace, hasSearchIndex } = await import(
+    "@/lib/services/search.service"
+  );
+
+  const wsRes = await createWorkspace({ title: "search-fixture", type: "project" });
+  assert.ok(wsRes.ok);
+  if (!wsRes.ok) return;
+  const wsId = wsRes.data.id;
+
+  assert.equal(await hasSearchIndex(wsId), false, "no index before build");
+
+  const built = await buildSearchIndex(wsId, [
+    { filePath: "auth/login.ts", chunkType: "file", layer: "Services / Logic",
+      chunkText: "authenticate user login password session authentication token" },
+    { filePath: "db/schema.ts", chunkType: "file", layer: "Data Layer",
+      chunkText: "database table column migration schema drizzle sqlite" },
+    { filePath: "ui/Button.tsx", chunkType: "file", layer: "UI Components",
+      chunkText: "render button click handler component props state" },
+  ]);
+  assert.ok(built.ok && built.data === 3, "index built with 3 chunks");
+  assert.equal(await hasSearchIndex(wsId), true, "index present after build");
+
+  const res = await searchWorkspace(wsId, "authentication login");
+  assert.ok(res.ok);
+  if (!res.ok) return;
+  assert.ok(res.data.length > 0, "auth query matches");
+  assert.equal(res.data[0].filePath, "auth/login.ts", "most relevant chunk ranks first");
+  assert.ok(
+    res.data.every((r, i) => i === 0 || r.score <= res.data[i - 1].score),
+    "results sorted by descending BM25 score"
+  );
+
+  // Stopwords + sub-3-char tokens are dropped entirely.
+  const empty = await searchWorkspace(wsId, "the a is to");
+  assert.ok(empty.ok && empty.data.length === 0, "stopword-only query returns nothing");
+
+  // Rebuild replaces the index rather than accumulating.
+  const rebuilt = await buildSearchIndex(wsId, [
+    { filePath: "solo.ts", chunkType: "file", layer: null, chunkText: "unrelated solo content" },
+  ]);
+  assert.ok(rebuilt.ok && rebuilt.data === 1);
+  const after = await searchWorkspace(wsId, "authentication");
+  assert.ok(after.ok && after.data.length === 0, "old chunks gone after rebuild");
+});
+
 // ── E2E smoke: import → analyze → deep-review → export (MS5) ──────────────────
 test("export: markdown captures the full pipeline (map, review, questions, concepts)", async () => {
   const { generateWorkspaceMarkdown } = await import("@/lib/services/export.service");
