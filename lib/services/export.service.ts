@@ -6,6 +6,7 @@ import { getConceptLinksByWorkspaceId } from "@/lib/services/concept-link.servic
 import { getDailyLogsByWorkspaceId } from "@/lib/services/daily-log.service";
 import { formatDate, parseExpectedPoints } from "@/lib/utils";
 import type { ServiceResult } from "@/lib/types";
+import type { SeniorReview } from "@/lib/services/senior-review.service";
 
 export type ExportPayload = {
   filename: string;
@@ -40,6 +41,78 @@ const LONG_DATE: Intl.DateTimeFormatOptions = {
 
 function hr(): string {
   return "\n\n---\n\n";
+}
+
+const SEV_EMOJI: Record<string, string> = {
+  critical: "🔴",
+  high: "🟠",
+  medium: "🟡",
+  low: "🔵",
+  info: "⚪",
+};
+
+// Minimal structural shape shared by every senior-review lens, so we can render
+// them uniformly without importing eight distinct lens types.
+type LensLike = {
+  score: { grade: string; score: number };
+  findings: Array<{ severity: string; title: string }>;
+  present?: boolean;
+};
+
+// Render the stored Senior Review (deep review) as a compact export section:
+// overall grade, a per-lens grade table, and the worst findings. Returns [] when
+// there is no review (manual maps) or the JSON can't be parsed.
+function renderSeniorReview(json: string | null): string[] {
+  if (!json) return [];
+  let review: SeniorReview;
+  try {
+    review = JSON.parse(json) as SeniorReview;
+  } catch {
+    return [];
+  }
+
+  const lines: string[] = [hr(), "## 🔍 Senior Review", ""];
+  lines.push(`**Overall: ${review.overall.grade} (${review.overall.score}/100)**`);
+  lines.push("");
+  if (review.overall.summary) {
+    lines.push(`> ${review.overall.summary}`);
+    lines.push("");
+  }
+
+  const lenses: Array<[string, LensLike]> = [
+    ["Security", review.security],
+    ["Testing", review.testing],
+    ["Code Health", review.codeHealth],
+    ["Architecture", review.architecture],
+    ["Frontend", review.frontend],
+    ["Backend", review.backend],
+    ["Dependencies", review.dependencies],
+    ["Feasibility", review.feasibility],
+  ];
+
+  lines.push("| Lens | Grade |");
+  lines.push("|------|-------|");
+  for (const [label, lens] of lenses) {
+    if (lens.present === false) continue; // frontend/backend absent for this project
+    lines.push(`| ${label} | ${lens.score.grade} (${lens.score.score}) |`);
+  }
+  lines.push("");
+
+  // Worst findings across every lens, most severe first.
+  const order = ["critical", "high", "medium", "low", "info"];
+  const findings = lenses
+    .flatMap(([, lens]) => (lens.present === false ? [] : lens.findings))
+    .sort((a, b) => order.indexOf(a.severity) - order.indexOf(b.severity))
+    .slice(0, 5);
+  if (findings.length > 0) {
+    lines.push("**Top findings:**");
+    for (const f of findings) {
+      lines.push(`- ${SEV_EMOJI[f.severity] ?? "•"} ${f.title}`);
+    }
+    lines.push("");
+  }
+
+  return lines;
 }
 
 export async function generateWorkspaceMarkdown(
@@ -139,6 +212,11 @@ export async function generateWorkspaceMarkdown(
       }
       lines.push("");
     }
+  }
+
+  // ── Senior Review (deep review) ───────────────────────────────────────────
+  if (map?.seniorReviewJson) {
+    lines.push(...renderSeniorReview(map.seniorReviewJson));
   }
 
   // ── Explain-Back ──────────────────────────────────────────────────────────

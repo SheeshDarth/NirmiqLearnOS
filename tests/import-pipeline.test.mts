@@ -520,6 +520,31 @@ test("createConceptLinkSchema: conceptType enum-enforced on the form path", asyn
   );
 });
 
+// ── E2E smoke: import → analyze → deep-review → export (MS5) ──────────────────
+test("export: markdown captures the full pipeline (map, review, questions, concepts)", async () => {
+  const { generateWorkspaceMarkdown } = await import("@/lib/services/export.service");
+
+  const res = await generateWorkspaceMarkdown(workspaceId);
+  assert.ok(res.ok, res.ok ? "" : res.error);
+  if (!res.ok) return;
+
+  const { filename, markdown } = res.data;
+  assert.match(filename, /^nirmiqcodesensei-.+-\d+\.md$/, "filename = slug + timestamp");
+
+  // The chain: each pipeline stage's output must reach the exported artifact.
+  assert.match(markdown, /^# .+/m, "title header");
+  assert.ok(markdown.includes("Exported from NirmiqCodeSensei"), "export header line");
+  assert.ok(markdown.includes("## 🗺️ Learning Map"), "learning-map section");
+  assert.ok(markdown.includes("## 🔍 Senior Review"), "deep-review section reaches export");
+  assert.match(markdown, /\*\*Overall: [A-F] \(\d+\/100\)\*\*/, "overall grade line");
+  assert.ok(markdown.includes("| Lens | Grade |"), "per-lens grade table");
+  assert.ok(markdown.includes("## 💬 Explain-Back"), "explain-back section");
+  assert.match(markdown, /### Q1:/, "at least one generated question");
+  assert.ok(markdown.includes("## ⚙️ DSA Bridge"), "DSA-bridge section");
+  // The green answer submitted by the progress test flows through to the export.
+  assert.ok(markdown.includes("test answer"), "user answer captured in export");
+});
+
 // ── deleteWorkspace cascade ───────────────────────────────────────────────────
 test("deleteWorkspace: cascade leaves zero orphaned child rows", async () => {
   const res = await deleteWorkspace(workspaceId);
