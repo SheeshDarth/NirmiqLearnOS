@@ -14,7 +14,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        # windows-2022 (not windows-latest): the newer windows-latest image ships
+        # a Visual Studio that node-gyp 10 (bundled with Node 20) can't detect
+        # ("unknown version undefined at ...\Visual Studio\18"), so better-sqlite3's
+        # source-build fallback fails. VS 2022 on windows-2022 is detected fine.
+        os: [ubuntu-latest, windows-2022]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
