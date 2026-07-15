@@ -7,16 +7,24 @@ on:
 
 jobs:
   gate:
-    runs-on: ubuntu-latest
+    # Local-first + cross-platform is a core promise, and Windows is the
+    # divergent platform (backslash paths, native better-sqlite3 build, no
+    # symlinks). Run the full gate on both Linux and Windows so path/native
+    # regressions are caught in CI, not on a user's machine.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-      # npm install (not ci) so the Linux runner resolves its own platform-
-      # specific optional deps (e.g. @tailwindcss/oxide native/wasm variants),
-      # which a Windows-generated lockfile can't fully pin cross-platform.
+      # npm install (not ci) so each runner resolves its own platform-specific
+      # optional deps (e.g. @tailwindcss/oxide native/wasm variants), which a
+      # single committed lockfile can't pin across Linux + Windows.
       - run: npm install --no-audit --no-fund
       - run: npm run lint
       - run: npm run typecheck
@@ -25,4 +33,6 @@ jobs:
       # Supply-chain gate: fail the build on CRITICAL advisories in prod deps.
       # High/moderate transitive advisories that can't be fixed until an
       # upstream release (e.g. next's bundled postcss) are tracked in SECURITY.md.
+      # Advisory data is platform-independent, so run it once (Linux).
       - run: npm audit --omit=dev --audit-level=critical
+        if: matrix.os == 'ubuntu-latest'
