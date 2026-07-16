@@ -46,6 +46,18 @@ const nextConfig: NextConfig = {
     "/**": ["./lib/db/migrations/**/*"],
   },
 
+  // NOTE: tracing sweeps data/ into .next/standalone — the local database *and*
+  // the user's imported source projects (their code, their .git history). The
+  // cause is lib/db/client.ts resolving path.join(process.cwd(), "data"): the
+  // tracer sees a literal directory and pulls the whole thing in.
+  //
+  // outputFileTracingExcludes does NOT stop this — it was tried here for
+  // data/docs/tests/scripts and had zero effect on the standalone copy (Next
+  // 16.2.7). Do not re-add it expecting protection. The real guard is
+  // scripts/pack-standalone.mjs, which strips these from dist/ and then hard-fails
+  // if any database, dotenv or native binary survives into the publishable bundle.
+  // package.json "files" is the second layer: it allowlists dist/ and bin/ only.
+
   // better-sqlite3 is a native addon — it must be require()'d at runtime, not
   // bundled. Without this, Turbopack tries to bundle it into its render/
   // static-path worker processes, which crashes them (WorkerError) on the

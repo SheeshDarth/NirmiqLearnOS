@@ -37,7 +37,7 @@ import { createSessionLog } from "../lib/services/session-log.service";
 // ── Server setup ───────────────────────────────────────────────────────────────
 
 const server = new Server(
-  { name: "nirmiqcodesensei", version: "0.1.0" },
+  { name: "nirmiqcodesensei", version: "1.0.0" },
   {
     capabilities: { tools: {} },
   }

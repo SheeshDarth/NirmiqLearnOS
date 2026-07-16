@@ -1,0 +1,21 @@
+# npm reads THIS file instead of .gitignore when it exists — which is the whole
+# point of it existing.
+#
+# .gitignore lists `node_modules/` and `.next/` (correct for git). npm applies those
+# same rules *inside* dist/, which silently strips the entire Next runtime and the
+# compiled app out of the tarball and ships a dist/server.js that cannot boot. The
+# publish succeeds; every install fails. This file stops that fallback.
+#
+# The real allowlist is package.json "files" (bin/, dist/, and the docs). Anything
+# not listed there never ships regardless of what appears below.
+#
+# Defence in depth for the things that must never leave this machine: the local
+# database and the user's imported source projects.
+data/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+.env
+.env.*
+*.tgz

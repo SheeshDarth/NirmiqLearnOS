@@ -2,7 +2,7 @@
   "name": "nirmiqcodesensei",
   "display_name": "NirmiqCodeSensei",
   "description": "A local-first learning OS that connects to your IDE. Log debug sessions, generate explain-back questions, map DSA concepts, and track daily learning — all inside Claude Code, Cursor, or Windsurf. Your data never leaves your machine.",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "author": "Siddharth Prasad",
   "license": "PolyForm-Noncommercial-1.0.0",
   "homepage": "https://github.com/SheeshDarth/NirmiqCodeSensei",

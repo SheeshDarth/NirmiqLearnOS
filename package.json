@@ -1,11 +1,24 @@
 {
   "name": "nirmiqcodesensei",
-  "version": "0.1.0",
-  "private": true,
+  "version": "1.0.0",
+  "description": "Local-first learning OS: import a project, get a learning map, an 8-lens senior review, code-grounded DSA, and explain-back questions. 127.0.0.1 only, no telemetry.",
+  "keywords": ["learning", "code-analysis", "mcp", "local-first", "education", "static-analysis"],
+  "homepage": "https://github.com/SheeshDarth/NirmiqCodeSensei#readme",
+  "repository": { "type": "git", "url": "git+https://github.com/SheeshDarth/NirmiqCodeSensei.git" },
+  "bugs": { "url": "https://github.com/SheeshDarth/NirmiqCodeSensei/issues" },
   "license": "PolyForm-Noncommercial-1.0.0",
   "engines": {
     "node": ">=20"
   },
+  "files": [
+    "bin/",
+    "dist/",
+    "CHANGELOG.md",
+    "README.md",
+    "LICENSE.md",
+    "SECURITY.md",
+    "mcp-manifest.json"
+  ],
   "bin": {
     "codesensei": "./bin/nirmiq.mjs",
     "nirmiqcodesensei": "./bin/nirmiq.mjs",
@@ -15,7 +28,10 @@
     "dev": "next dev --turbopack --hostname 127.0.0.1",
     "build": "next build",
     "start": "next start --hostname 127.0.0.1",
-    "lint": "eslint .",
+    "pack:standalone": "node scripts/pack-standalone.mjs",
+    "build:mcp": "esbuild mcp-server/index.ts --bundle --platform=node --format=cjs --target=node20 --outfile=dist/mcp-server.cjs --external:better-sqlite3 --tsconfig=tsconfig.json",
+    "prepack": "npm run build && npm run pack:standalone && npm run build:mcp",
+    "lint": "eslint . --ignore-pattern dist/ --ignore-pattern data/",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/import-pipeline.test.mts",
     "db:generate": "drizzle-kit generate",
@@ -38,8 +54,11 @@
     "three": "^0.184.0",
     "zod": "^4.4.3"
   },
+  "optionalDependencies": {
+    "sharp": "^0.34.0"
+  },
   "overrides": {
-    "esbuild": ">=0.25.0"
+    "esbuild": "$esbuild"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -49,6 +68,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "drizzle-kit": "^0.31.10",
+    "esbuild": "^0.28.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
     "postcss": "^8.4.31",
