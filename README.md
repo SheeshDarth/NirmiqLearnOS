@@ -33,23 +33,34 @@ Everything is stored locally in SQLite. Nothing leaves your machine.
 
 ## Quick start
 
-### 1. Clone and install
+```bash
+cd your-project
+npx nirmiqcodesensei@latest
+```
+
+That's it. The dashboard opens at [http://127.0.0.1:3000](http://127.0.0.1:3000) — bound to localhost only. Requires Node.js 20+.
+
+Your learning data lives in `data/` **in the directory you launch from**, so each project keeps its own history, and it's yours to back up, move or delete. Migrations are applied automatically on first start.
+
+```bash
+npx nirmiqcodesensei          # start the app + open the dashboard
+npx nirmiqcodesensei mcp      # start the MCP server (stdio)
+npx nirmiqcodesensei open     # just open the dashboard
+npx nirmiqcodesensei --help   # all commands
+```
+
+Aliases: `npx codesensei` and `npx nirmiq` do the same thing.
+
+### From a clone (contributors)
 
 ```bash
 git clone https://github.com/SheeshDarth/NirmiqCodeSensei.git
 cd NirmiqCodeSensei
 npm install
-```
-
-### 2. Run the app
-
-```bash
 npm run dev
 ```
 
-Database migrations are applied automatically on first start — no manual setup needed. Requires Node.js 20+.
-
-Open [http://127.0.0.1:3000](http://127.0.0.1:3000) — the app binds to localhost only.
+The CLI detects which shape it's running in: a published install boots the prebuilt server, a checkout runs `next dev` against the source.
 
 ---
 
@@ -58,7 +69,7 @@ Open [http://127.0.0.1:3000](http://127.0.0.1:3000) — the app binds to localho
 Start the MCP server:
 
 ```bash
-npm run mcp
+npx nirmiqcodesensei mcp
 ```
 
 ### Claude Code
@@ -69,9 +80,8 @@ Add to `.claude/mcp.json` in your project (or user MCP settings):
 {
   "mcpServers": {
     "nirmiqcodesensei": {
-      "command": "npm",
-      "args": ["run", "mcp"],
-      "cwd": "/absolute/path/to/NirmiqCodeSensei"
+      "command": "npx",
+      "args": ["nirmiqcodesensei", "mcp"]
     }
   }
 }
@@ -84,9 +94,8 @@ Add to Cursor MCP settings (`Settings → Features → MCP`):
 ```json
 {
   "nirmiqcodesensei": {
-    "command": "npm",
-    "args": ["run", "mcp"],
-    "cwd": "/absolute/path/to/NirmiqCodeSensei"
+    "command": "npx",
+    "args": ["nirmiqcodesensei", "mcp"]
   }
 }
 ```
@@ -99,13 +108,14 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
 {
   "mcpServers": {
     "nirmiqcodesensei": {
-      "command": "npm",
-      "args": ["run", "mcp"],
-      "cwd": "/absolute/path/to/NirmiqCodeSensei"
+      "command": "npx",
+      "args": ["nirmiqcodesensei", "mcp"]
     }
   }
 }
 ```
+
+> Running from a clone instead? Use `"command": "npm", "args": ["run", "mcp"]` with `"cwd"` set to the repo root.
 
 ---
 

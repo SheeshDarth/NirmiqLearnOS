@@ -555,6 +555,31 @@ Given 44 findings across two audits (many overlapping), what is the correct orde
 
 ---
 
+### REVIEW-013 — Scaling, load balancing and traffic handling for 1.0: build, stub, or record as N/A?
+
+**Date:** 2026-07-16
+**Trigger:** MS7 ships 1.0 as installable software. A conventional "deploy" checklist expects load balancing, horizontal scaling, a traffic handler, health checks and a rollout strategy. None of it exists here. Before tagging 1.0, decide whether that is a gap to close, a stub to add, or a deliberate non-goal to record — so the absence is a documented decision rather than something a future reader (or a reviewer) reads as an oversight.
+
+**Council Synthesis:**
+
+**Recommendation:** **Record it as N/A. Build nothing.** The premise of the checklist does not hold for this product's deployment model. NirmiqCodeSensei is not a service anyone deploys — it is software a single developer runs on their own machine, bound to 127.0.0.1, against an embedded single-writer SQLite database, with the user's private source code on local disk. The concurrency ceiling is *one person*. Load balancing distributes traffic across replicas; there is no traffic and there are no replicas. Horizontal scaling adds instances behind a shared data tier; a second instance would either contend for the same WAL lock or fragment the user's learning history across databases — strictly worse than one. A health-check endpoint monitors a process no operator is watching; the user sees the browser tab. Each of these would add surface area, dependencies and failure modes to buy capacity that cannot be consumed.
+
+This is a *deployment-model* judgement, not an admission of immaturity. The scaling work 1.0 actually needed was done, and it was per-machine, not per-fleet: analysis holds 300 files under 200 ms, incremental re-analysis short-circuits unchanged sources (~8× cheaper), and the review lens pass is flat (~4 ms) — all recorded in [BENCHMARKS.md](BENCHMARKS.md). Local-first shifts the scaling question from "how many users per node" to "how large a project per machine", and that question has a measured answer.
+
+**Risks:**
+- *Read as an oversight later* → mitigated by this entry: the absence is a decision with a rationale and an explicit trigger for revisiting.
+- *The deployment model changes (hosted/multi-tenant/team mode)* → this decision is scoped to the local-first, single-user model and would be void immediately. That pivot's blocking problem is not load balancing anyway; it is that SQLite-on-local-disk plus reading the user's private source code from local paths is the wrong data and trust architecture for a shared service. Revisit **only** on a deliberate move to a hosted model, and revisit the data tier first.
+- *Genuine local performance problems get filed under "scaling N/A"* → they don't: per-machine performance is a live concern with a benchmark suite behind it. N/A covers fleet concerns only.
+
+**What NOT to Build Yet:** load balancer or reverse-proxy config; multi-instance/clustering support; a `/health` endpoint; PM2/systemd/Docker orchestration; blue-green or canary rollout; connection pooling (better-sqlite3 is synchronous and single-process by design); rate limiting (there is one user, on loopback); autoscaling policies; distributed tracing or APM.
+
+**Decision:**
+> Load balancing, horizontal scaling and traffic handling are **out of scope for 1.0 by design**, not deferred — they solve problems a single-user, loopback-bound, local-first tool does not have. Scaling for this product means per-machine analysis performance, which is measured and gated in [BENCHMARKS.md](BENCHMARKS.md). Revisit only if the deployment model itself changes to a hosted or multi-tenant one, and re-architect the data tier before touching traffic.
+
+**Status:** ✅ Logged (MS7). Satisfies the REVIEW-011 exit criterion "load balancing recorded N/A".
+
+---
+
 ## Architecture Decisions Summary
 
 | ID | Decision | Outcome | Phase |
@@ -569,5 +594,6 @@ Given 44 findings across two audits (many overlapping), what is the correct orde
 | REVIEW-008 | Whole-project review — polish sprint: GitHub-pull on refresh, blended progress formula (#26), conceptType form enum (#30); defer cohesion/search/graph | ✅ Implemented — 10/10 tests | Pre-1.0 |
 | REVIEW-009 | Landing strategy — preserve 15 commits (rebase-and-merge, no squash); skip paid AI smoke test; F2/F4/F5 cleanup as 3 free commits | ✅ Implemented — cleanup done | Pre-1.0 |
 | REVIEW-010 | CodeSensei program — visible-identity rename, 8-lens local senior-review engine (findings-only optional AI), Obsidian-grade graph | ✅ Implemented — 16/16 tests | v0.2 |
-| REVIEW-011 | Road to deployed 1.0 — single-problem megasprints (MS1–MS7) + full deep rename to NirmiqCodeSensei; load-balancing recorded N/A | 🔄 In progress (MS1✅ MS2✅ MS3✅ MS4✅) | v0.2→1.0 |
+| REVIEW-011 | Road to deployed 1.0 — single-problem megasprints (MS1–MS7) + full deep rename to NirmiqCodeSensei; load-balancing recorded N/A | ✅ Complete (MS1–MS7 ✅; N/A recorded in REVIEW-013) | v0.2→1.0 |
 | REVIEW-012 | MS3 cross-feature module links (#27/#28) — deferred from MS3, then **built in MS4** as a soft `module_key` column with deterministic tagging on both AI + offline paths (no AI-schema dependency) | ✅ Implemented (MS4) | v0.2→1.0 |
+| REVIEW-013 | Scaling/load balancing/traffic handling — **N/A by design** for a single-user, loopback-bound, local-first tool; scaling here means per-machine analysis performance (measured in BENCHMARKS.md). Revisit only on a move to a hosted model, data tier first | ✅ Recorded (MS7) — build nothing | 1.0 |

@@ -183,7 +183,7 @@ Each solves **one** major problem deeply and ships as its own gated PR.
 | **MS4 ✅** Algorithms & Analysis Depth | make the analysis rigorous and calibrated | codeHealth calibrated to *density* not size (self-scan F→**B**, overall **A**) via `computeCodeHealthScore`; **incremental re-analysis** (`computeSourceFingerprint` + `source_fingerprint` 0009, `{unchanged:true}` short-circuit); documented **benchmarks** (300-file < 200 ms, ~8× incremental savings); **#27/#28 module associations** — soft `module_key` (0010) on questions/concepts, deterministic tagging on both AI + offline paths, module cards link to their questions/concepts |
 | **MS5 ✅** Quality & Reliability | a handful of tests isn't production confidence | **E2E smoke** of the critical path (import→analyze→deep-review→export) — which closed a real gap: the deep review now reaches the export; **BM25 search coverage**; **cross-platform CI** (Windows + Linux matrix). Suite 24/24 |
 | **MS6 ✅** Framework & Performance | production Next.js build quality | **`output: "standalone"`** self-contained server (migrations + native `better-sqlite3` force-traced in) — verified boots on 127.0.0.1, HTTP 200, runtime DB migrated; **a11y** accessible names on icon-only buttons; **no UI-blocking analysis** (import + reanalyze already show pending/disabled states) |
-| **MS7** Distribution & Release | turn the repo into installable, versioned software — the actual "deploy" | *(remaining)* `npx nirmiqcodesensei@latest` on a fresh machine; tagged **v1.0.0** GitHub Release; CHANGELOG; **scaling-N/A ADR** (load balancing / horizontal scaling intentionally out of scope for a single-user local-first tool) |
+| **MS7 ✅** Distribution & Release | turn the repo into installable, versioned software — the actual "deploy" | **`npx nirmiqcodesensei`** — ships MS6's standalone build as a published package; native modules resolve **per-platform at install** (one tarball serves Windows/Linux/macOS) via `scripts/pack-standalone.mjs`, which assembles `dist/` and **hard-fails** if a database, dotenv, git history or `.node` binary reaches the bundle. **Verified by installing the real tarball into an empty directory**: HTTP 200 on `/dashboard`, `/workspaces`, `/workspaces/import`; DB created in the *user's* cwd and runtime-migrated (11); MCP handshake clean (12 tools, stdout pure JSON-RPC). MCP bundled at prepack (esbuild, CJS). **CHANGELOG** + **scaling-N/A ADR (REVIEW-013)**. Gate green, 24/24. *v1.0.0 tag/Release pending explicit go-ahead; `npm publish` is the maintainer's to run* |
 
 Monetization (Pro/Gumroad) is **deferred/dormant** — 1.0 runs fully on the free + BYOK path.
 
@@ -203,6 +203,23 @@ Monetization (Pro/Gumroad) is **deferred/dormant** — 1.0 runs fully on the fre
 | Standalone build booted against an unmigrated DB | migration `.sql` files are read from disk at runtime; dependency tracing only follows imports | `outputFileTracingIncludes` force-copies `lib/db/migrations/**` |
 | Stacked PR closed instead of retargeting | deleting the base branch on merge closed the child PR | `git rebase --onto <newbase> <oldbase>` to drop the duplicated commits, re-open against master |
 | `git commit -m` mangled multiline bodies | PowerShell 5.1 here-string interpolation | commit via `-F -` heredoc / quote-free bodies |
+
+### MS7 — the distribution class of bugs
+
+None of these are visible from source, a green build, or a passing test suite. Every one was
+found by building the real tarball and installing it into an empty directory — which is why
+that is now the verification step for any packaging change, not `npm run build`.
+
+| Problem | Root cause | Fix |
+|---|---|---|
+| The bundle contained the local **database and the user's imported projects, incl. their `.git`** — publishing would have leaked third-party source | file tracing resolves `path.join(process.cwd(), "data")` in `lib/db/client.ts` to a literal dir and sweeps it in. `outputFileTracingExcludes` **does not stop this** (tried for data/docs/tests/scripts — zero effect on Next 16.2.7) | `scripts/pack-standalone.mjs` filters at copy time and **asserts** — the build fails if a DB, dotenv, git history or `.node` binary reaches `dist/` |
+| A published install wrote the user's DB into `node_modules/…/dist/data/`, so every `npx …@latest` would **silently wipe their learning history** | standalone `server.js` runs `process.chdir(__dirname)`; `lib/db/client.ts` resolves the DB from `process.cwd()` | launcher pins `NCS_DATA_DIR` to the invoking cwd — reusing the env hook already built for out-of-tree entry points |
+| A 127.0.0.1-only product would have been **exposed across the LAN** | standalone `server.js` defaults `HOSTNAME` to `0.0.0.0` (the `next start --hostname` flag doesn't apply — there is no Next CLI) | launcher pins `HOSTNAME=127.0.0.1` |
+| Tarball installed but **could not boot** — no Next runtime, no compiled app | the tracer copied the repo's own `.gitignore` into the bundle; npm honours ignore files *nested inside* the packed dir, so `node_modules/` + `.next/` were dropped. `npm publish` would have succeeded | exclude `.gitignore`/`.git` from the bundle; assert on a dist-root ignore file |
+| Stripping the build machine's `better-sqlite3` **500'd every request** | Turbopack compiles `serverExternalPackages` to `require()` of the **hashed** dir name (`better-sqlite3-90e2652d…`) — not the bare specifier | keep the hashed dir requirable but replace its payload with a shim that delegates to the platform-correct copy npm installs |
+| MCP handshake returned nothing from a published install | the CLI banner printed to **stdout**, which stdio transport reserves for JSON-RPC; separately, an ESM bundle crashed on `typescript-estree`'s `__filename` | banner → stderr; bundle as **CJS** |
+| `eslint .` died with a **V8 OOM crash** | flat config only ignores `node_modules` by default, so it walked `dist/` (~2000 files, one 12 MB) | `--ignore-pattern dist/ --ignore-pattern data/` in the lint script |
+| `npm install` failed `EOVERRIDE` | the `esbuild` security pin collided with esbuild as a direct devDependency | `"esbuild": "$esbuild"` — reference the direct dep, keeping the pin's intent |
 
 ---
 
@@ -237,17 +254,29 @@ Monetization (Pro/Gumroad) is **deferred/dormant** — 1.0 runs fully on the fre
 
 ## 10. Current status & what remains
 
-**Done & merged:** MS1–MS6 (identity, security, architecture/data-integrity, analysis depth,
-QA, framework/perf). Master is green on Windows + Linux; the standalone build boots and self-migrates.
+**Done & merged: MS1–MS7** — identity, security, architecture/data-integrity, analysis depth,
+QA, framework/perf, and distribution. Master is green on Windows + Linux. The product is
+**installable software**: `npx nirmiqcodesensei` boots the app and `npx nirmiqcodesensei mcp`
+serves 12 MCP tools, both verified from a real tarball installed into an empty directory.
+Version **1.0.0** across the package, the MCP `serverInfo` and the manifest. Suite 24/24;
+migrations at 0010. REVIEW-011's megasprint program is complete, including its
+"load-balancing recorded N/A" criterion ([REVIEW-013](COUNCIL_REVIEW_LOG.md)).
 
-**Remaining — MS7 (Distribution & Release):**
-1. `npx nirmiqcodesensei@latest` runs on a fresh machine (package the standalone build + a launcher
-   that copies `.next/static` + `public` alongside `server.js`).
-2. Tagged **v1.0.0** GitHub Release with a current CHANGELOG.
-3. A **scaling-N/A ADR** recording that load balancing / horizontal scaling is a deliberate
-   non-goal for a single-user local-first tool (not an oversight).
-4. Optional stretch (MS8): onboarding polish, MCP-directory submission, desktop-installer spike.
+**Remaining for the 1.0 release itself** (outward-facing, deliberately gated):
+1. Tag **v1.0.0** and cut the GitHub Release — pending the maintainer's explicit go-ahead.
+2. `npm publish` — the maintainer runs this; it needs npm credentials.
+3. After publishing, confirm `npx nirmiqcodesensei@latest` resolves from the registry (local
+   verification covers everything up to the registry itself).
+
+**Optional stretch (MS8):** onboarding polish, MCP-directory submission, desktop-installer
+spike, macOS CI leg.
+
+**The MS7 lesson worth carrying forward:** a green gate says the code is correct; it says
+nothing about what you ship. Five ship-blockers — one of them a privacy leak of a third
+party's source, one a silent destroyer of user data — were invisible to lint, typecheck,
+build and 24 passing tests, and surfaced the moment the tarball was installed for real. For
+packaging changes, `npm pack` + install into an empty directory **is** the test.
 
 ---
 
-*This dossier is a living document — update it as MS7 lands and 1.0 ships.*
+*This dossier is a living document — update it as 1.0 ships and MS8 is considered.*
