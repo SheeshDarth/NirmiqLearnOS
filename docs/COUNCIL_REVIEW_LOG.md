@@ -580,6 +580,31 @@ This is a *deployment-model* judgement, not an admission of immaturity. The scal
 
 ---
 
+### REVIEW-014 — Whole-project v1.0.0 release-readiness review: tag & publish now, or fix first?
+
+**Date:** 2026-07-20
+**Trigger:** v1.0.0 is declared in `package.json` and `CHANGELOG.md` but the release is **untagged and unpublished**. Tagging a release and pushing to npm are hard-to-reverse, outward-facing acts (npm unpublish is blocked after 72 h). Before the "go", the whole codebase deserved one gate: is this a genuine 1.0, and does anything block the tag?
+
+**Council Synthesis:**
+
+**Evidence (run this session):** full verification gate green — lint clean, typecheck clean, **24/24 tests**, production build passes (22 routes). Security self-scan **A/100** with real hardening (symlink-confined walk, shell-free git, credential-dir blocks, prod CSP without `unsafe-eval`). Distribution already validated by installing the real tarball into an empty dir (HTTP 200, DB in the user's cwd, 11 migrations, MCP 12 tools). `npm audit`: 1 high + 2 moderate, all **transitive** — the high (`hono` 4.12.x) enters via `@modelcontextprotocol/sdk` → `@hono/node-server`, and is **unreachable** because the MCP server uses stdio transport, not hono's HTTP server; the moderates are `postcss`/`next` (dev).
+
+**Recommendation:** **Ship it — tag v1.0.0 and publish — after three cheap pre-flight checks, and build nothing new.** The remaining work is release mechanics and one supply-chain-optics call, not code. The scaling work a local-first 1.0 actually needed is done and measured (REVIEW-013 / BENCHMARKS.md); the ship-blockers were already caught by installing the tarball for real (MS7).
+
+**Risks:**
+- *npm publish is effectively irreversible* (unpublish blocked after 72 h; only deprecate) → run `npm pack` + `npx` from the tarball into a fresh temp dir once more, and confirm the `nirmiqcodesensei` name is claimable/owned (`npm view nirmiqcodesensei`) before publishing.
+- *The `hono` high shows on anyone's `npm audit`* → not an exploit risk (off the stdio path) but erodes the "provably safe" positioning; bump `@modelcontextprotocol/sdk` if a release dedupes to patched hono, else document "unreachable via stdio" in SECURITY.md/CHANGELOG.
+- *macOS is CI-untested* → already disclosed as a known limitation; acceptable for 1.0, don't over-claim macOS support.
+
+**What NOT to Build Yet:** MS8 launch polish (onboarding, MCP-directory submission, desktop-installer spike) — post-1.0 discoverability, not a blocker; horizontal scaling / load balancing (REVIEW-013 N/A by design); monetization (dormant — 1.0 ships on free + BYOK).
+
+**Decision:**
+> **Yes — ship v1.0.0.** Run the three pre-flight checks (npm name availability + fresh-dir tarball smoke test + hono decision), then the maintainer tags the release and runs `npm publish`; no new code is required to reach 1.0. Tag/Release and `npm publish` are the maintainer's outward-facing actions.
+
+**Status:** ✅ Logged (2026-07-20). Gate green this session (lint/typecheck/build/test 24/24). v1.0.0 tag + GitHub Release + `npm publish` pending the maintainer's go-ahead.
+
+---
+
 ## Architecture Decisions Summary
 
 | ID | Decision | Outcome | Phase |
@@ -597,3 +622,4 @@ This is a *deployment-model* judgement, not an admission of immaturity. The scal
 | REVIEW-011 | Road to deployed 1.0 — single-problem megasprints (MS1–MS7) + full deep rename to NirmiqCodeSensei; load-balancing recorded N/A | ✅ Complete (MS1–MS7 ✅; N/A recorded in REVIEW-013) | v0.2→1.0 |
 | REVIEW-012 | MS3 cross-feature module links (#27/#28) — deferred from MS3, then **built in MS4** as a soft `module_key` column with deterministic tagging on both AI + offline paths (no AI-schema dependency) | ✅ Implemented (MS4) | v0.2→1.0 |
 | REVIEW-013 | Scaling/load balancing/traffic handling — **N/A by design** for a single-user, loopback-bound, local-first tool; scaling here means per-machine analysis performance (measured in BENCHMARKS.md). Revisit only on a move to a hosted model, data tier first | ✅ Recorded (MS7) — build nothing | 1.0 |
+| REVIEW-014 | Whole-project v1.0.0 release-readiness — gate green (24/24), security A/100, tarball-verified; the one `hono` high is transitive + unreachable (stdio). Ship after 3 pre-flight checks; build nothing new | ✅ Logged — go to tag/publish (maintainer) | 1.0 |
