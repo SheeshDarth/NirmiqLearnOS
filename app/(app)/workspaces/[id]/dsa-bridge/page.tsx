@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { notFound } from "next/navigation";
-import { ArrowLeft, Code2 } from "lucide-react";
+import { ArrowLeft, Code2, BookOpen } from "lucide-react";
 import Link from "next/link";
 import { getWorkspaceById } from "@/lib/services/workspace.service";
 import { getConceptLinksByWorkspaceId } from "@/lib/services/concept-link.service";
@@ -33,8 +33,14 @@ export default async function DSABridgePage({
     ? mapResult.data.modules.find((m) => m.title.toLowerCase().includes("how it works"))
     : null;
 
-  // Group by concept type
-  const grouped = links.reduce<Record<string, typeof links>>((acc, link) => {
+  // Code-grounded findings (real DSA detected in the source, carrying a file
+  // reference) are the point of this page — lead with them. Generic CS/stack
+  // concepts (no source file) are demoted to a secondary section below.
+  const codeGrounded = links.filter((l) => l.sourceFile);
+  const conceptual = links.filter((l) => !l.sourceFile);
+
+  // Group the code-grounded findings by concept type (Data Structure, Algorithm…)
+  const grouped = codeGrounded.reduce<Record<string, typeof links>>((acc, link) => {
     const key = link.conceptType ?? "Uncategorised";
     acc[key] = acc[key] ?? [];
     acc[key].push(link);
@@ -62,7 +68,8 @@ export default async function DSABridgePage({
           <h1 className="text-lg font-semibold text-zinc-100">DSA Bridge</h1>
         </div>
         <p className="text-sm text-zinc-500">
-          Map every feature you build to the fundamental concept behind it. Own the theory, not just the code.
+          The data structures &amp; algorithms actually detected in your code — each paired with
+          the core CS concept behind it and the exact spot it shows up. Own the theory, not just the code.
         </p>
       </div>
 
@@ -87,14 +94,14 @@ export default async function DSABridgePage({
       {links.length > 0 && (
         <div className="flex items-center gap-4">
           <div className="bg-[#0d1117] border border-zinc-800 rounded-lg px-4 py-3 flex-1 text-center">
-            <p className="text-2xl font-bold text-zinc-100">{links.length}</p>
-            <p className="text-xs text-zinc-500 mt-0.5">Concept Links</p>
+            <p className="text-2xl font-bold text-zinc-100">{codeGrounded.length}</p>
+            <p className="text-xs text-zinc-500 mt-0.5">DSA in your code</p>
           </div>
           <div className="bg-[#0d1117] border border-violet-900/40 rounded-lg px-4 py-3 flex-1 text-center">
             <p className="text-2xl font-bold text-violet-400">
               {Object.keys(grouped).length}
             </p>
-            <p className="text-xs text-zinc-500 mt-0.5">Concept Types</p>
+            <p className="text-xs text-zinc-500 mt-0.5">Categories</p>
           </div>
           <div className="bg-[#0d1117] border border-zinc-800 rounded-lg px-4 py-3 flex-1 text-center">
             <p className="text-2xl font-bold text-zinc-100">
@@ -120,14 +127,52 @@ export default async function DSABridgePage({
           </p>
         </div>
       ) : (
-        <div className="space-y-6">
-          {Object.entries(grouped).map(([type, typeLinks]) => (
-            <div key={type}>
-              <h2 className="text-xs text-zinc-600 uppercase tracking-wide font-medium mb-2 px-1">
-                {type}
-              </h2>
-              <div className="space-y-2">
-                {typeLinks.map((link) => {
+        <div className="space-y-8">
+          {/* Primary: real DSA found in the code */}
+          {codeGrounded.length > 0 && (
+            <div className="space-y-6">
+              {Object.entries(grouped).map(([type, typeLinks]) => (
+                <div key={type}>
+                  <h2 className="text-xs text-zinc-600 uppercase tracking-wide font-medium mb-2 px-1">
+                    {type}
+                  </h2>
+                  <div className="space-y-2">
+                    {typeLinks.map((link) => {
+                      const boundDelete = deleteConceptLinkAction.bind(null, id, link.id);
+                      return (
+                        <ConceptLinkCard
+                          key={link.id}
+                          link={link}
+                          deleteAction={boundDelete}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {codeGrounded.length === 0 && (
+            <p className="text-xs text-zinc-500 bg-[#0d1117] border border-zinc-800 border-dashed rounded-lg p-4">
+              No data structures or algorithms were auto-detected in this project&apos;s source.
+              Re-import to re-scan, or add your own concept links below.
+            </p>
+          )}
+
+          {/* Secondary: generic CS/stack concepts, not tied to a specific line */}
+          {conceptual.length > 0 && (
+            <details className="group bg-[#0d1117] border border-zinc-800 rounded-lg overflow-hidden">
+              <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none hover:bg-zinc-900/50 transition-colors list-none">
+                <BookOpen size={13} className="text-zinc-500 shrink-0" />
+                <span className="text-xs font-medium text-zinc-300">
+                  CS concepts from your stack ({conceptual.length})
+                </span>
+                <span className="ml-auto text-xs text-zinc-600 group-open:hidden">show</span>
+                <span className="ml-auto text-xs text-zinc-600 hidden group-open:block">hide</span>
+              </summary>
+              <div className="px-4 pb-4 pt-1 space-y-2 border-t border-zinc-800">
+                {conceptual.map((link) => {
                   const boundDelete = deleteConceptLinkAction.bind(null, id, link.id);
                   return (
                     <ConceptLinkCard
@@ -138,8 +183,8 @@ export default async function DSABridgePage({
                   );
                 })}
               </div>
-            </div>
-          ))}
+            </details>
+          )}
         </div>
       )}
 

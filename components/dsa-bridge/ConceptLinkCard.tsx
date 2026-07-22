@@ -35,6 +35,17 @@ export function ConceptLinkCard({ link, deleteAction }: Props) {
   const [expanded, setExpanded] = useState(false);
   const typeStyle = getTypeColor(link.conceptType);
 
+  // Code-grounded findings store "<how it works here>\n\nCS fundamental: <core
+  // concept>" (see persistAnalysis). Split so the card can teach the generic
+  // concept AND show how it actually shows up in the user's code.
+  const marker = "\n\nCS fundamental: ";
+  const rawExplanation = link.explanation ?? "";
+  const markerAt = rawExplanation.indexOf(marker);
+  const howItWorksHere =
+    markerAt >= 0 ? rawExplanation.slice(0, markerAt) : rawExplanation;
+  const coreConcept =
+    markerAt >= 0 ? rawExplanation.slice(markerAt + marker.length) : null;
+
   return (
     <div className="bg-[#0d1117] border border-zinc-800 hover:border-zinc-700 rounded-lg overflow-hidden transition-colors">
       {/* Header */}
@@ -63,10 +74,10 @@ export function ConceptLinkCard({ link, deleteAction }: Props) {
             )}
           </div>
 
-          {/* Quick preview of explanation */}
+          {/* Quick preview — lead with the core concept when we have one */}
           {link.explanation && !expanded && (
             <p className="text-xs text-zinc-600 mt-1 line-clamp-1">
-              {link.explanation}
+              {coreConcept ?? howItWorksHere}
             </p>
           )}
         </div>
@@ -94,14 +105,24 @@ export function ConceptLinkCard({ link, deleteAction }: Props) {
         </div>
       </div>
 
-      {/* Expanded detail */}
+      {/* Expanded detail — teach the core concept, then show it in the code */}
       {expanded && (
         <div className="border-t border-zinc-800 px-4 py-4 space-y-4">
+          {coreConcept && (
+            <div>
+              <p className="text-xs text-zinc-500 uppercase tracking-wide font-medium mb-1 flex items-center gap-1.5">
+                <BookOpen size={12} className="text-violet-400" />
+                The core concept
+              </p>
+              <p className="text-sm text-zinc-300 leading-relaxed">{coreConcept}</p>
+            </div>
+          )}
+
           {link.codeSnippet && (
             <div>
               <p className="text-xs text-zinc-500 uppercase tracking-wide font-medium mb-1 flex items-center gap-1.5">
                 <Code size={12} className="text-cyan-400" />
-                Found in your code
+                How it shows up in your code
                 {link.sourceFile && (
                   <span className="text-zinc-600 normal-case font-mono">— {link.sourceFile}</span>
                 )}
@@ -112,13 +133,13 @@ export function ConceptLinkCard({ link, deleteAction }: Props) {
             </div>
           )}
 
-          {link.explanation && (
+          {howItWorksHere && (
             <div>
               <p className="text-xs text-zinc-500 uppercase tracking-wide font-medium mb-1">
-                How it applies
+                What it&apos;s doing here
               </p>
               <p className="text-sm text-zinc-300 leading-relaxed">
-                {link.explanation}
+                {howItWorksHere}
               </p>
             </div>
           )}
